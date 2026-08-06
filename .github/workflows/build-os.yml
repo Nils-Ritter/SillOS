@@ -15,8 +15,11 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       
-      - name: Set nightly
-        run: rustup override set nightly
+      - name: Install Rust nightly with rust-src
+        uses: dtolnay/rust-toolchain@master
+        with:
+          toolchain: nightly
+          components: rust-src
 
       - name: Build
         run: cargo build --verbose
