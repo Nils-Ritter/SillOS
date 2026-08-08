@@ -37,9 +37,14 @@ jobs:
             qemu-system-arm \
             qemu-system-misc \
             qemu-utils
+      - name: Install bootimage
+        run: | 
+          rustup component add llvm-tools \
+          cargo install bootimage
       - name: Check installation
         run: |
           qemu-system-x86_64 --version
           qemu-system-aarch64 --version
+          bootimage --version
       - name: Test OS
         run: cargo test
