@@ -28,19 +28,15 @@ jobs:
         uses: dtolnay/rust-toolchain@master
         with:
           toolchain: nightly
-          components: rust-src
+          components: rust-src llvm-tools
       - name: Install QEMU
         run: |
           sudo apt-get update
           sudo apt-get install -y \
             qemu-system-x86 \
-            qemu-system-arm \
-            qemu-system-misc \
             qemu-utils
       - name: Install bootimage
-        run: | 
-          rustup component add llvm-tools \
-          cargo install bootimage
+        run: cargo install bootimage --locked
       - name: Check installation
         run: |
           qemu-system-x86_64 --version
