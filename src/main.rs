@@ -11,8 +11,13 @@ use core::panic::PanicInfo;
 pub extern "C" fn _start() -> ! {
     println!("Hello World{}", "!");
 
+    SillOS::init();
+    
+
     #[cfg(test)]
     test_main();
+
+    x86_64::instructions::interrupts::int3(); //test breakpoint
 
     loop {}
 }

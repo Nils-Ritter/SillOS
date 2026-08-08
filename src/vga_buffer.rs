@@ -46,13 +46,13 @@ const BUFFER_WIDTH: usize = 80;
 
 #[repr(transparent)]
 struct Buffer {
-    chars: [[Volatile<ScreenChar>; BUFFER_WIDTH]; BUFFER_HEIGHT]
+    pub(crate) chars: [[Volatile<ScreenChar>; BUFFER_WIDTH]; BUFFER_HEIGHT]
 }
 
 pub struct Writer {
     column_position: usize,
     color_code: ColorCode,
-    buffer: &'static mut Buffer
+    pub(crate) buffer: &'static mut Buffer
 }
 
 impl Writer {
@@ -135,8 +135,29 @@ macro_rules! println {
     ($($arg:tt)*) => ($crate::print!("{}\n", format_args!($($arg)*)));
 }
 
+#[macro_export]
+macro_rules! print_error {
+    ($($arg:tt)*) => ($crate::vga_buffer::_print_error(format_args!($($arg)*)));
+}
+
+#[macro_export]
+macro_rules! println_error {
+    () => ($crate::print_error!("\n"));
+    ($($arg:tt)*) => ($crate::print_error!("{}\n", format_args!($($arg)*)));
+}
+
+
 #[doc(hidden)]
 pub fn _print(args: fmt::Arguments) {
     use core::fmt::Write;
-    WRITER.lock().write_fmt(args).unwrap();
+    let mut writer = WRITER.lock();
+    writer.write_fmt(args).unwrap();
+}
+
+#[doc(hidden)]
+pub fn _print_error(args: fmt::Arguments){
+    use core::fmt::Write;
+    let mut writer = WRITER.lock();
+    writer.color_code = ColorCode::new(Color::LightRed, Color::Black);
+    writer.write_fmt(args).unwrap();
 }
