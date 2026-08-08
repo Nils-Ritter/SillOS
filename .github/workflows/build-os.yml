@@ -11,15 +11,30 @@ env:
 jobs:
   build:
     runs-on: ubuntu-latest
-
     steps:
       - uses: actions/checkout@v4
-      
       - name: Install Rust nightly with rust-src
         uses: dtolnay/rust-toolchain@master
         with:
           toolchain: nightly
           components: rust-src
-
       - name: Build
-        run: cargo build --verbose
+        run: cargo build
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install QEMU
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y \
+            qemu-system-x86 \
+            qemu-system-arm \
+            qemu-system-misc \
+            qemu-utils
+      - name: Check installation
+        run: |
+          qemu-system-x86_64 --version
+          qemu-system-aarch64 --version
+      - name: Test OS
+        run: cargo test
