@@ -40,7 +40,6 @@ jobs:
       - name: Check installation
         run: |
           qemu-system-x86_64 --version
-          qemu-system-aarch64 --version
           bootimage --version
       - name: Test OS
         run: cargo test
