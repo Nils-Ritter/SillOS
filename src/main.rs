@@ -4,21 +4,65 @@
 #![test_runner(SillOS::test_runner)]
 #![reexport_test_harness_main = "test_main"]
 
-use SillOS::{print, println};
-use x86_64::registers::control::Cr3;
+use SillOS::{alloc, mem::{self, BootInfoFrameAllocator, translate_addr}, print, println};
+use bootloader::{BootInfo, bootinfo::MemoryRegionType::PageTable, entry_point};
+use x86_64::{VirtAddr, registers::control::Cr3, structures::paging::{Page, Translate}};
 use core::panic::PanicInfo;
-#[unsafe(no_mangle)]
-pub extern "C" fn _start() -> ! {
-    println!("Hello World{}", "!");
+use ext_alloc::{boxed::Box, rc::Rc, vec::Vec, vec};
 
+extern crate alloc as ext_alloc;
+
+entry_point!(kmain);
+
+fn kmain(boot_info: &'static BootInfo) -> ! {
     SillOS::init();
-    
+
     let (level_4_page_table, _) = Cr3::read();
     println!("[INFO] Level 4 page table at: {:?}", level_4_page_table.start_address());
+
+    let phys_mem_offset = VirtAddr::new(boot_info.physical_memory_offset);
+    let mut mapper = unsafe { mem::init(phys_mem_offset) };
+
+    let mut frame_allocator = unsafe { BootInfoFrameAllocator::init(&boot_info.memory_map) };
+
+    alloc::init_heap(&mut mapper, &mut frame_allocator).expect("heap init failed");
+
+    // map an unused page
+    let page = Page::containing_address(VirtAddr::new(0xdeadbeef000));
+    mem::create_example_mapping(page, &mut mapper, &mut frame_allocator);
+
+    // write the string `New!` to the screen through the new mapping
+    let page_ptr: *mut u64 = page.start_address().as_mut_ptr();
+    unsafe { page_ptr.offset(20).write_volatile(0x_f021_f077_f065_f04e)};
+
+    println!("[STARTUP] Startup done, entering kernel!");
+
+    let x = Box::new(41);
+
+    println!("[INFO] Boxed var is: {}", x);
+
+    // allocate a number on the heap
+    let heap_value = Box::new(41);
+    println!("heap_value at {:p}", heap_value);
+
+    // create a dynamically sized vector
+    let mut vec = Vec::new();
+    for i in 0..50000 {
+        vec.push(i);
+    }
+    println!("vec at {:p}", vec.as_slice());
+
+    // create a reference counted vector -> will be freed when count reaches 0
+    let reference_counted = Rc::new(vec![1, 2, 3]);
+    let cloned_reference = reference_counted.clone();
+    println!("current reference count is {}", Rc::strong_count(&cloned_reference));
+    core::mem::drop(reference_counted);
+    println!("reference count is {} now", Rc::strong_count(&cloned_reference));
 
     #[cfg(test)]
     test_main();
 
+    println!("[INFO] Kernel exec is over! Halting...");
     SillOS::hlt_loop();
 }
 

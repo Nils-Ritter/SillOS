@@ -67,7 +67,10 @@ extern "x86-interrupt" fn keyboard_interrupt_handler(
             match key {
                 DecodedKey::Unicode(character) => {
                     match character{
-                        '\n' => press_return(),
+                        '\n' => {
+                            press_return();
+                            print!("\n");
+                        },
                         '\t' => print!("    "),
                         _ => print!("{}", character)
                     }

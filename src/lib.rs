@@ -5,13 +5,24 @@
 #![reexport_test_harness_main = "test_main"]
 #![feature(abi_x86_interrupt)]
 
+extern crate alloc as ext_alloc;
+
 pub mod serial;
 pub mod vga_buffer;
 pub mod interrupts;
 pub mod gdt;
 pub mod term;
+pub mod mem;
+pub mod alloc;
 
 use core::panic::PanicInfo;
+
+#[cfg(test)]
+use bootloader::BootInfo;
+use bootloader::entry_point;
+
+#[cfg(test)]
+entry_point!(test_kmain);
 
 pub trait Testable {
     fn run(&self) -> ();
@@ -45,8 +56,7 @@ pub fn test_panic_handler(info: &PanicInfo) -> ! {
 
 /// Entry point for `cargo test`
 #[cfg(test)]
-#[unsafe(no_mangle)]
-pub extern "C" fn _start() -> ! {
+fn test_kmain(_boot_info: &'static BootInfo) -> ! {
     init();
     test_main();
     hlt_loop();
@@ -98,5 +108,4 @@ pub fn init(){
     x86_64::instructions::interrupts::enable();
     println!("[OK]");
 
-    println!("[STARTUP] Startup done, entering kernel!");
 }
