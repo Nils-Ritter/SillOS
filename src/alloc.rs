@@ -1,16 +1,16 @@
-use ext_alloc::alloc::{GlobalAlloc, Layout};
-use core::ptr::null_mut;
+use spin::MutexGuard;
 use x86_64::{
     structures::paging::{
         mapper::MapToError, FrameAllocator, Mapper, Page, PageTableFlags, Size4KiB,
     },
     VirtAddr
 };
-use linked_list_allocator::LockedHeap;
 
-use crate::{alloc::bump::BumpAllocator, print, println};
+use crate::{alloc::{fixed_size_block::FixedSizeBlockAllocator}, print, println};
 
 pub mod bump;
+pub mod linked_list;
+pub mod fixed_size_block;
 
 pub const HEAP_START: usize = 0x_4444_4444_0000;
 pub const HEAP_SIZE: usize = 1000 * 1024; //~1MiB
@@ -19,7 +19,7 @@ pub fn init_heap(
     mapper: &mut impl Mapper<Size4KiB>,
     frame_allocator: &mut impl FrameAllocator<Size4KiB>,
 ) -> Result<(), MapToError<Size4KiB>>{
-    print!("[Startup] Initializing kernel heap... ");
+    print!("[STARTUP] Initializing kernel heap... ");
     let page_range = {
         let heap_start = VirtAddr::new(HEAP_START as u64);
         let heap_end = heap_start + HEAP_SIZE as u64 - 1u64;
@@ -40,22 +40,8 @@ pub fn init_heap(
     return Ok(());
 }
 
-//#[global_allocator]
-//static ALLOCATOR: LockedHeap = LockedHeap::empty();
 #[global_allocator]
-static ALLOCATOR: Locked<BumpAllocator> = Locked::new(BumpAllocator::new());
-
-pub struct Dummy;
-
-unsafe impl GlobalAlloc for Dummy {
-    unsafe fn alloc(&self, _layout: Layout) -> *mut u8{
-        return null_mut();
-    }
-
-    unsafe fn dealloc(&self, _ptr: *mut u8, _layout: Layout){
-        panic!("dealloc should never be called");
-    }
-}
+static ALLOCATOR: Locked<FixedSizeBlockAllocator> = Locked::new(FixedSizeBlockAllocator::new());
 
 pub struct Locked<A> { inner: spin::Mutex<A> }
 
@@ -64,7 +50,7 @@ impl<A> Locked<A>{
         return Locked { inner: spin::Mutex::new(inner) };
     }
 
-    pub fn lock(&self) -> spin::MutexGuard<A> {
+    pub fn lock(&self) -> MutexGuard<A> {
         return self.inner.lock();
     }
 }
