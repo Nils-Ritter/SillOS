@@ -1,7 +1,9 @@
 use spin::Mutex;
 use volatile::Volatile;
-use core::fmt;
+use core::{fmt, iter};
 use lazy_static::lazy_static;
+
+use crate::serial_println;
 
 #[allow(dead_code)]
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -36,7 +38,7 @@ impl ColorCode {
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 #[repr(C)]
-struct ScreenChar {
+pub struct ScreenChar {
     ascii_character: u8,
     color_code: ColorCode
 }
@@ -107,6 +109,28 @@ impl Writer {
             }
         }
     }
+
+    pub fn backspace(&mut self){
+        let blank = ScreenChar{
+            ascii_character: b' ',
+            color_code: self.color_code
+        };
+
+        let row = BUFFER_HEIGHT - 1;
+        let col = self.column_position - 1;
+
+        if col > 1 {
+            self.buffer.chars[row][col].write(blank);
+            self.column_position -= 1;
+        }
+    }
+
+    pub fn clear_screen(&mut self){
+        for row in 0..BUFFER_HEIGHT{
+            self.clear_row(row);
+        }
+        self.column_position = 0;
+    }
 }
 
 impl fmt::Write for Writer {
@@ -145,7 +169,6 @@ macro_rules! println_error {
     () => ($crate::print_error!("\n"));
     ($($arg:tt)*) => ($crate::print_error!("{}\n", format_args!($($arg)*)));
 }
-
 
 #[doc(hidden)]
 pub fn _print(args: fmt::Arguments) {

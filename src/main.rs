@@ -4,11 +4,11 @@
 #![test_runner(SillOS::test_runner)]
 #![reexport_test_harness_main = "test_main"]
 
-use SillOS::{alloc, mem::{self, BootInfoFrameAllocator, translate_addr}, print, println};
+use SillOS::{alloc, mem::{self, BootInfoFrameAllocator, translate_addr}, print, println, term::{begin_new_cmd_line, exec_str_as_cmd}};
 use bootloader::{BootInfo, bootinfo::MemoryRegionType::PageTable, entry_point};
 use x86_64::{VirtAddr, registers::control::Cr3, structures::paging::{Page, Translate}};
 use core::panic::PanicInfo;
-use ext_alloc::{boxed::Box, rc::Rc, vec::Vec, vec};
+use ext_alloc::{boxed::Box, rc::Rc, string::ToString, vec::Vec, vec};
 
 extern crate alloc as ext_alloc;
 
@@ -59,10 +59,11 @@ fn kmain(boot_info: &'static BootInfo) -> ! {
     core::mem::drop(reference_counted);
     println!("reference count is {} now", Rc::strong_count(&cloned_reference));
 
+    begin_new_cmd_line();
+
     #[cfg(test)]
     test_main();
 
-    println!("[INFO] Kernel exec is over! Halting...");
     SillOS::hlt_loop();
 }
 

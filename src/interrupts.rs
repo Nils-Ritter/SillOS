@@ -1,6 +1,7 @@
+use pc_keyboard::KeyCode;
 use x86_64::structures::idt::{InterruptDescriptorTable, InterruptStackFrame, PageFaultErrorCode};
 
-use crate::{gdt, hlt_loop, print, println_error, term::press_return};
+use crate::{gdt, hlt_loop, print, println_error, term::{accpept_cmd, append_cmd_char, cmd_backspace}, vga_buffer::WRITER};
 use pic8259::ChainedPics;
 use spin;
 use lazy_static::lazy_static;
@@ -68,11 +69,18 @@ extern "x86-interrupt" fn keyboard_interrupt_handler(
                 DecodedKey::Unicode(character) => {
                     match character{
                         '\n' => {
-                            press_return();
-                            print!("\n");
+                            accpept_cmd();
                         },
                         '\t' => print!("    "),
-                        _ => print!("{}", character)
+                        '\u{8}' => {
+                            let mut writer = WRITER.lock();
+                            writer.backspace();
+                            cmd_backspace();
+                        },
+                        _ => {
+                            append_cmd_char(character);
+                            print!("{}", character);
+                        }
                     }
                 },
                 DecodedKey::RawKey(key) => { 

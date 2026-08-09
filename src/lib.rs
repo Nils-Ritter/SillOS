@@ -14,6 +14,7 @@ pub mod gdt;
 pub mod term;
 pub mod mem;
 pub mod alloc;
+pub mod termapps;
 
 use core::panic::PanicInfo;
 
