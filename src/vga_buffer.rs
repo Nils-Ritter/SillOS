@@ -150,14 +150,37 @@ macro_rules! println_error {
 #[doc(hidden)]
 pub fn _print(args: fmt::Arguments) {
     use core::fmt::Write;
+    use x86_64::instructions::interrupts;
     let mut writer = WRITER.lock();
-    writer.write_fmt(args).unwrap();
+    writer.color_code = ColorCode::new(Color::White, Color::Black);
+    interrupts::without_interrupts(|| {
+        writer.write_fmt(args).unwrap();
+    });
 }
 
 #[doc(hidden)]
 pub fn _print_error(args: fmt::Arguments){
     use core::fmt::Write;
+    use x86_64::instructions::interrupts;
     let mut writer = WRITER.lock();
     writer.color_code = ColorCode::new(Color::LightRed, Color::Black);
-    writer.write_fmt(args).unwrap();
+    interrupts::without_interrupts(|| {
+        writer.write_fmt(args).unwrap();
+    });
+}
+
+#[test_case]
+fn test_println_output() {
+    use core::fmt::Write;
+    use x86_64::instructions::interrupts;
+
+    let s = "Some test string that fits on a single line";
+    interrupts::without_interrupts(|| {
+        let mut writer = WRITER.lock();
+        writeln!(writer, "\n{}", s).expect("writeln failed");
+        for (i, c) in s.chars().enumerate() {
+            let screen_char = writer.buffer.chars[BUFFER_HEIGHT - 2][i].read();
+            assert_eq!(char::from(screen_char.ascii_character), c);
+        }
+    });
 }
