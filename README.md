@@ -135,11 +135,11 @@ The CI workflow should install:
 ## Roadmap
 
 - [ ] Improve serial logging
-- [ ] Add interrupt handling
-- [ ] Add memory management
-- [ ] Add a keyboard driver
+- [x] Add interrupt handling
+- [x] Add memory management
+- [x] Add a keyboard driver
 - [ ] Add a basic shell
-- [ ] Add a simple heap allocator
+- [x] Add a simple heap allocator
 - [ ] Improve automated testing
 - [ ] Support additional hardware
 
