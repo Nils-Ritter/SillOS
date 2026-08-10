@@ -50,7 +50,7 @@ impl<A> Locked<A>{
         return Locked { inner: spin::Mutex::new(inner) };
     }
 
-    pub fn lock(&self) -> MutexGuard<A> {
+    pub fn lock(&self) -> MutexGuard<'_, A> {
         return self.inner.lock();
     }
 }

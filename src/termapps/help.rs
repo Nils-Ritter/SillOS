@@ -1,6 +1,6 @@
 use crate::{print, println};
 
-pub fn main(args: &[&str]) -> i32 {
+pub fn main(_args: &[&str]) -> i32 {
     println!("SillOS - DEV BUILD");
     println!("Avaliable commands:");
     println!("\thelp - Prints a list of avaliable commands.");

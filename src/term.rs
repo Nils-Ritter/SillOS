@@ -25,7 +25,7 @@ pub fn accpept_cmd(){
 }
 
 pub fn begin_new_cmd_line(){
-    print!("\n$ ");
+    print!("\n> ");
 }
 
 ///This will execute any given string as a command.
