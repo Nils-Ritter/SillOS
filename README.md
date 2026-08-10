@@ -44,7 +44,7 @@ sudo apt install qemu-system-x86 qemu-utils
 Clone the repository:
 
 ```sh
-git clone https://github.com/<your-username>/SillOS.git
+git clone https://github.com/Nils-Ritter/SillOS.git
 cd SillOS
 ```
 
