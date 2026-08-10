@@ -19,7 +19,7 @@ pub mod termapps;
 use core::panic::PanicInfo;
 
 #[cfg(test)]
-use bootloader::BootInfo;
+use bootloader::{BootInfo, entry_point};
 
 #[cfg(test)]
 entry_point!(test_kmain);
