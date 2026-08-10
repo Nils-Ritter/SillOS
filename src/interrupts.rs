@@ -1,4 +1,3 @@
-use pc_keyboard::KeyCode;
 use x86_64::structures::idt::{InterruptDescriptorTable, InterruptStackFrame, PageFaultErrorCode};
 
 use crate::{gdt, hlt_loop, print, println_error, term::{accpept_cmd, append_cmd_char, cmd_backspace}, vga_buffer::WRITER};
@@ -83,6 +82,7 @@ extern "x86-interrupt" fn keyboard_interrupt_handler(
                         }
                     }
                 },
+                #[allow(unused_variables)]
                 DecodedKey::RawKey(key) => { 
                     //TODO: Logic for modifier keys
                 }

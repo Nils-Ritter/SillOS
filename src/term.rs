@@ -1,7 +1,7 @@
 use ext_alloc::{string::{String, ToString}, vec::Vec};
 use spin::Mutex;
 
-use crate::{print, println, termapps};
+use crate::{print, termapps};
 
 static COMMAND_LINE: Mutex<String> = Mutex::new(String::new());
 

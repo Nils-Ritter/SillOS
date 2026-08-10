@@ -1,9 +1,7 @@
 use spin::Mutex;
 use volatile::Volatile;
-use core::{fmt, iter};
+use core::fmt;
 use lazy_static::lazy_static;
-
-use crate::serial_println;
 
 #[allow(dead_code)]
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
