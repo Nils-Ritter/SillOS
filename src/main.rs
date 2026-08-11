@@ -16,10 +16,6 @@ entry_point!(kmain);
 
 fn kmain(boot_info: &'static BootInfo) -> ! {
     SillOS::init();
-
-    let (level_4_page_table, _) = Cr3::read();
-    println!("[INFO] Level 4 page table at: {:?}", level_4_page_table.start_address());
-
     let phys_mem_offset = VirtAddr::new(boot_info.physical_memory_offset);
     let mut mapper = unsafe { mem::init(phys_mem_offset) };
 
@@ -68,6 +64,7 @@ fn kmain(boot_info: &'static BootInfo) -> ! {
 }
 
 /// This function is called on panic.
+/// Very likely to be misdiagnosed by LSPs.
 #[cfg(not(test))]
 #[panic_handler]
 fn panic(info: &PanicInfo) -> ! {

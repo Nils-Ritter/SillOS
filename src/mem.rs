@@ -61,7 +61,7 @@ pub fn create_example_mapping(
     let flags = Flags::PRESENT | Flags::WRITABLE;
 
     let map_to_result = unsafe {
-        //FIXME: This is unsafe, only use for testingS
+        //FIXME: This is unsafe, only use for testing
         mapper.map_to(page, frame, flags, frame_allocator)
     };
 
