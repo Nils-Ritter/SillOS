@@ -17,6 +17,10 @@ $(ISO): $(KERNEL)
 	cp $(KERNEL) iso_root/boot/sillos
 	cp limine.conf iso_root/limine.conf
 
+	cd limine
+	make
+	cd ..
+
 	cp limine/limine-bios-cd.bin iso_root/boot/
 	cp limine/limine-uefi-cd.bin iso_root/boot/
 	cp limine/BOOTX64.EFI iso_root/EFI/BOOT/
