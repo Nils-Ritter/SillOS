@@ -1,73 +1,48 @@
-.PHONY: all build run test
+KERNEL := target/x86_64-unknown-none/debug/sillos
+ISO := sillos.iso
+LIMINE := limine/limine
 
-all: build
+.PHONY: all clean run
 
-build:
+all: $(ISO)
+
+$(KERNEL):
 	cargo build
 
-run:
-	cargo run
+$(ISO): $(KERNEL)
+	rm -rf iso_root
+	mkdir -p iso_root/boot
+	mkdir -p iso_root/EFI/BOOT
 
-test:
-	@set +e; \
-	output=$$(cargo test --no-fail-fast 2>&1); \
-	status=$$?; \
-	echo "$$output"; \
-	passed=$$(echo "$$output" | grep -c '\[TEST_OK\]'); \
-	failed=$$(echo "$$output" | grep -c '\[TEST_FAIL\]'); \
-	total=$$((passed + failed)); \
-	if [ "$$total" -gt 0 ]; then \
-		percent=$$((passed * 100 / total)); \
-	else \
-		percent=0; \
-	fi; \
-	bar_width=30; \
-	if [ "$$total" -gt 0 ]; then \
-		filled=$$((passed * bar_width / total)); \
-	else \
-		filled=0; \
-	fi; \
-	empty=$$((bar_width - filled)); \
-	cyan=$$(printf '\033[0;36m'); \
-	green=$$(printf '\033[0;32m'); \
-	red=$$(printf '\033[0;31m'); \
-	bold=$$(printf '\033[1m'); \
-	white=$$(printf '\033[1;37m'); \
-	reset=$$(printf '\033[0m'); \
-	bar=""; \
-	i=0; \
-	while [ "$$i" -lt "$$filled" ]; do \
-		bar="$${bar}█"; \
-		i=$$((i + 1)); \
-	done; \
-	i=0; \
-	while [ "$$i" -lt "$$empty" ]; do \
-		bar="$${bar}░"; \
-		i=$$((i + 1)); \
-	done; \
-	echo ""; \
-	printf "%s╔══════════════════════════════════════════════════╗%s\n" "$$cyan" "$$reset"; \
-	printf "%s║              %sTEST REPORT%s                         %s║%s\n" \
-		"$$cyan" "$$bold$$white" "$$reset" "$$cyan"; \
-	printf "%s╠══════════════════════════════════════════════════╣%s\n" "$$cyan" "$$reset"; \
-	printf "  Total tests:  %s\n" "$$total"; \
-	printf "  Passed:       %s%s%s\n" "$$green" "$$passed" "$$reset"; \
-	printf "  Failed:       %s%s%s\n" "$$red" "$$failed" "$$reset"; \
-	echo ""; \
-	if [ "$$failed" -eq 0 ] && [ "$$status" -eq 0 ]; then \
-		bar_color="$$green"; \
-	else \
-		bar_color="$$red"; \
-	fi; \
-	printf "  Progress:     %s[%s%s%s] %s%d%%%s\n" \
-		"$$white" "$$bar_color" "$$bar" "$$reset" "$$bold" "$$percent" "$$reset"; \
-	echo ""; \
-	printf "%s╠══════════════════════════════════════════════════╣%s\n" "$$cyan" "$$reset"; \
-	if [ "$$failed" -eq 0 ] && [ "$$status" -eq 0 ]; then \
-		printf "║              %s✓ ALL TESTS PASSED! 🎉              %s║%s\n" "$$green$$bold" "$$reset"; \
-	else \
-		printf "║              %s✗ TESTS FAILED                      %s║%s\n" "$$red$$bold" "$$reset"; \
-	fi; \
-	printf "%s╚══════════════════════════════════════════════════╝%s\n" "$$cyan" "$$reset"; \
-	echo ""; \
-	exit $$status
+	cp $(KERNEL) iso_root/boot/sillos
+	cp limine.conf iso_root/limine.conf
+
+	cp limine/limine-bios-cd.bin iso_root/boot/
+	cp limine/limine-uefi-cd.bin iso_root/boot/
+	cp limine/BOOTX64.EFI iso_root/EFI/BOOT/
+	cp limine/limine-bios.sys iso_root/boot/
+
+	xorriso -as mkisofs \
+		-R -r -J \
+		-b boot/limine-bios-cd.bin \
+		-no-emul-boot \
+		-boot-load-size 4 \
+		-boot-info-table \
+		--efi-boot boot/limine-uefi-cd.bin \
+		-efi-boot-part \
+		--efi-boot-image \
+		--protective-msdos-label \
+		iso_root \
+		-o $(ISO)
+
+	$(LIMINE) bios-install $(ISO)
+
+run: $(ISO)
+	qemu-system-x86_64 -cdrom $(ISO) -m 256M
+
+clean:
+	cargo clean
+	rm -rf iso_root $(ISO)
+
+cleaniso:
+	rm -rf iso_root $(ISO)
