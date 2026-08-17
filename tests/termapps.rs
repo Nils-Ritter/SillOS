@@ -46,4 +46,5 @@ fn test_termapp_bp(){
 #[test_case]
 fn test_termapp_clear(){
     unsafe { exec_str_as_cmd(ext_alloc::string::ToString::to_string(&"clear")); }
+    panic!();
 }
