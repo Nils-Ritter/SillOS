@@ -57,6 +57,8 @@ pub extern "C" fn kmain() -> ! {
         }
     }
 
+    panic!();
+
     loop {
         core::hint::spin_loop();
     }

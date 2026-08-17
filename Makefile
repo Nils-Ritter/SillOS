@@ -1,25 +1,25 @@
 KERNEL := target/x86_64-unknown-none/debug/sillos
 ISO := sillos.iso
 LIMINE := limine/limine
+LIMINE_DIR := limine
 
-.PHONY: all clean run
+.PHONY: all clean run limine kernel
 
 all: $(ISO)
 
-$(KERNEL):
+$(LIMINE):
+	$(MAKE) -C $(LIMINE_DIR)
+
+kernel:
 	cargo build
 
-$(ISO): $(KERNEL)
+$(ISO): kernel $(LIMINE)
 	rm -rf iso_root
 	mkdir -p iso_root/boot
 	mkdir -p iso_root/EFI/BOOT
 
 	cp $(KERNEL) iso_root/boot/sillos
 	cp limine.conf iso_root/limine.conf
-
-	cd limine
-	make
-	cd ..
 
 	cp limine/limine-bios-cd.bin iso_root/boot/
 	cp limine/limine-uefi-cd.bin iso_root/boot/
@@ -47,6 +47,9 @@ run: $(ISO)
 clean:
 	cargo clean
 	rm -rf iso_root $(ISO)
+	rm -rf $(LIMINE)
 
 cleaniso:
 	rm -rf iso_root $(ISO)
+
+limine: $(LIMINE)
