@@ -20,7 +20,7 @@ features = ["spin_no_std"]
 
 [package.metadata.bootimage]
 run-args = ["-serial", "stdio"]
-test-args = ["-device", "isa-debug-exit,iobase=0xf4,iosize=0x04", "-serial", "stdio", "-display", "none"]
+test-args = ["-device", "isa-debug-exit,iobase=0xf4,iosize=0x04", "-serial", "stdio"]
 test-success-exit-code = 33
 test-timeout = 30
 
@@ -42,3 +42,7 @@ harness = false
 [[test]]
 name = "stack_overflow"
 harness = false
+
+[[test]]
+name = "termapps"
+harness = true

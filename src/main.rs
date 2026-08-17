@@ -6,7 +6,7 @@
 
 use SillOS::{alloc, mem::{self, BootInfoFrameAllocator}, println, term::begin_new_cmd_line};
 use bootloader::{BootInfo, entry_point};
-use x86_64::{VirtAddr, registers::control::Cr3, structures::paging::Page};
+use x86_64::{VirtAddr, structures::paging::Page};
 use core::panic::PanicInfo;
 use ext_alloc::{boxed::Box, rc::Rc, vec::Vec, vec};
 

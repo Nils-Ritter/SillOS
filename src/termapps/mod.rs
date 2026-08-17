@@ -13,3 +13,7 @@ pub static APPS: &[(&str, AppMain)] = &[
     ("panic", panic::main),
     ("bp", bp::main),
 ];
+
+#[test_case]
+fn test_termapp_help(){
+}

@@ -34,13 +34,16 @@ where
 {
     fn run(&self) {
         serial_print!("{}...\t", core::any::type_name::<T>());
+        print!("{}...\t", core::any::type_name::<T>());
         self();
-        serial_println!("[ok]");
+        serial_println!("[OK]");
+        println!("[OK]");
     }
 }
 
 pub fn test_runner(tests: &[&dyn Testable]) {
     serial_println!("Running {} tests", tests.len());
+    println!("[TESTING] Running {} tests", tests.len());
     for test in tests {
         test.run();
     }
@@ -48,15 +51,16 @@ pub fn test_runner(tests: &[&dyn Testable]) {
 }
 
 pub fn test_panic_handler(info: &PanicInfo) -> ! {
-    serial_println!("[failed]\n");
+    serial_println!("[FAILED]\n");
     serial_println!("Error: {}\n", info);
-    exit_qemu(QemuExitCode::Failed);
+    println_error!("[FAILED]\n");
+    println_error!("Error: {}\n", info);
     hlt_loop();
 }
 
 /// Entry point for `cargo test`
 #[cfg(test)]
-fn test_kmain(_boot_info: &'static BootInfo) -> ! {
+fn test_kmain(boot_info: &'static BootInfo) -> ! {
     init();
     test_main();
     hlt_loop();
@@ -107,5 +111,4 @@ pub fn init(){
     print!("[STARTUP] Enabling interrupts... ");
     x86_64::instructions::interrupts::enable();
     println!("[OK]");
-
 }
