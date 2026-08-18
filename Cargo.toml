@@ -12,10 +12,7 @@ spin = "0.5.2"
 x86_64 = "0.15.5"
 pic8259 = "0.11.0"
 pc-keyboard = "0.7.0"
-sillos-test-macro = {
-    path = "test_macro"
-}
-
+sillos-test-macro = { path = "test_macro" }
 
 [dependencies.lazy_static]
 version = "1.0"

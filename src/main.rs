@@ -3,6 +3,7 @@
 #![feature(abi_x86_interrupt)]
 
 mod fb;
+mod acpi;
 mod font;
 mod serial;
 mod test;
@@ -18,6 +19,7 @@ mod trivial_assert_test;
 #[path = "../tests/interrupts.rs"]
 mod interrupts_test;
 
+use crate::acpi::reboot;
 pub use crate::test::{TestResult, test};
 
 extern crate sillos_test_macro;
@@ -30,7 +32,7 @@ use core::panic::PanicInfo;
 pub const DEBUG_TOGGLE: bool = true;
 pub static mut TESTING: bool = false;
 
-use limine::{RequestsEndMarker, RequestsStartMarker};
+use limine::{RequestsEndMarker, RequestsStartMarker, request::RsdpRequest};
 
 #[used]
 #[unsafe(link_section = ".limine_req_start")]
@@ -39,6 +41,10 @@ static REQUESTS_START_MARKER: RequestsStartMarker = RequestsStartMarker::new();
 #[used]
 #[unsafe(link_section = ".limine_req_end")]
 static REQUESTS_END_MARKER: RequestsEndMarker = RequestsEndMarker::new();
+
+#[used]
+#[unsafe(link_section = ".limine_reqs")]
+static RSDP_REQUEST: RsdpRequest = RsdpRequest::new();
 
 #[unsafe(no_mangle)]
 #[unsafe(link_section = ".text.entry")]
@@ -54,8 +60,10 @@ pub extern "C" fn kmain() -> ! {
 
     #[cfg(not(feature = "test"))]
     {
+        use crate::acpi::reboot;
+
         unsafe { TESTING = false; }
-        //kernel();
+        kernel();
     }
 
     loop {
@@ -87,6 +95,10 @@ fn kinit(){
     x86_64::instructions::interrupts::enable();
     serial_println!("Interrupts enabled.");
 
+    serial_println!("Initializing ACPI...");
+    acpi::init();
+    serial_println!("ACPI initialized.");
+
     serial_println!("Calling int3...");
     unsafe {
         core::arch::asm!("int3");
@@ -114,6 +126,8 @@ fn kernel() {
     fb::present();
 
     serial_println!("5: present returned");
+
+    serial_println!("REBOOTING VIA ACPI");
 }
 
 #[panic_handler]
