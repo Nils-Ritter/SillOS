@@ -13,7 +13,7 @@ and bare-metal Rust programming.
 - x86_64 kernel
 - Written in Rust
 - `no_std` bare-metal environment
-- Bootable using the Rust `bootloader` and `bootimage` tools
+- Bootable using the Limine bootloader
 - Serial output for debugging
 - Kernel tests running inside QEMU
 
@@ -24,7 +24,7 @@ and bare-metal Rust programming.
 - `rust-src` component
 - `llvm-tools-preview` component
 - QEMU
-- `bootimage`
+- `limine`
 
 Install the Rust components and tools with:
 
