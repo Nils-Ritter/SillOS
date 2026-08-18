@@ -16,26 +16,23 @@ but marked as unsafe and their use is HEAVILY discouraged.
 In many cases it would also be beneficial for programs to have its own backbuffer,
 and treat the kernels backbuffer as its frontbuffer, as to not interfere with any other application
 that might want to draw to the backbuffer.
-*/ 
+*/
 use core::ptr;
 
 use limine::request::FramebufferRequest;
 
 #[used]
 #[unsafe(link_section = ".limine_reqs")]
-static FRAMEBUFFER_REQUEST: FramebufferRequest =
-    FramebufferRequest::new();
+static FRAMEBUFFER_REQUEST: FramebufferRequest = FramebufferRequest::new();
 
 const MAX_WIDTH: usize = 1920;
 const MAX_HEIGHT: usize = 1080;
 
 const BYTES_PER_PIXEL: usize = 4;
 
-const BACKBUFFER_SIZE: usize =
-    MAX_WIDTH * MAX_HEIGHT * BYTES_PER_PIXEL;
+const BACKBUFFER_SIZE: usize = MAX_WIDTH * MAX_HEIGHT * BYTES_PER_PIXEL;
 
-static mut BACKBUFFER: [u8; BACKBUFFER_SIZE] =
-    [0; BACKBUFFER_SIZE];
+static mut BACKBUFFER: [u8; BACKBUFFER_SIZE] = [0; BACKBUFFER_SIZE];
 
 #[derive(Clone, Copy)]
 pub struct Color {
@@ -45,11 +42,7 @@ pub struct Color {
 }
 
 impl Color {
-    pub const BLACK: Color = Color {
-        r: 0,
-        g: 0,
-        b: 0,
-    };
+    pub const BLACK: Color = Color { r: 0, g: 0, b: 0 };
 
     pub const WHITE: Color = Color {
         r: 255,
@@ -57,23 +50,11 @@ impl Color {
         b: 255,
     };
 
-    pub const RED: Color = Color {
-        r: 255,
-        g: 0,
-        b: 0,
-    };
+    pub const RED: Color = Color { r: 255, g: 0, b: 0 };
 
-    pub const GREEN: Color = Color {
-        r: 0,
-        g: 255,
-        b: 0,
-    };
+    pub const GREEN: Color = Color { r: 0, g: 255, b: 0 };
 
-    pub const BLUE: Color = Color {
-        r: 0,
-        g: 0,
-        b: 255,
-    };
+    pub const BLUE: Color = Color { r: 0, g: 0, b: 255 };
 }
 
 #[derive(Clone, Copy)]
@@ -94,7 +75,6 @@ unsafe impl Sync for Info {}
 
 static mut INFO: Option<Info> = None;
 
-
 // ============================================================
 // Initialization
 // ============================================================
@@ -104,10 +84,7 @@ pub fn init() {
         .response()
         .expect("No framebuffer response");
 
-    let framebuffer = response
-        .framebuffers()
-        .first()
-        .expect("No framebuffer");
+    let framebuffer = response.framebuffers().first().expect("No framebuffer");
 
     let width = framebuffer.width as usize;
     let height = framebuffer.height as usize;
@@ -146,7 +123,6 @@ pub fn init() {
     clear(Color::BLACK);
 }
 
-
 // ============================================================
 // Internal
 // ============================================================
@@ -159,7 +135,6 @@ fn info() -> Info {
             .expect("Framebuffer not initialized")
     }
 }
-
 
 // ============================================================
 // Color
@@ -174,39 +149,27 @@ fn color_to_u32(color: Color) -> u32 {
         | ((color.b as u32) << info.blue_shift)
 }
 
-
 // ============================================================
 // Draw pixel
 // ============================================================
 
-pub fn put_pixel(
-    x: usize,
-    y: usize,
-    color: Color,
-) {
+pub fn put_pixel(x: usize, y: usize, color: Color) {
     let info = info();
 
     if x >= info.width || y >= info.height {
         return;
     }
 
-    let offset =
-        (y * info.width + x) * 4;
+    let offset = (y * info.width + x) * 4;
 
     let pixel = color_to_u32(color);
 
     unsafe {
-        let back =
-            ptr::addr_of_mut!(BACKBUFFER)
-                as *mut u8;
+        let back = ptr::addr_of_mut!(BACKBUFFER) as *mut u8;
 
-        ptr::write_unaligned(
-            back.add(offset) as *mut u32,
-            pixel,
-        );
+        ptr::write_unaligned(back.add(offset) as *mut u32, pixel);
     }
 }
-
 
 // ============================================================
 // Clear
@@ -218,40 +181,24 @@ pub fn clear(color: Color) {
     let pixel = color_to_u32(color);
 
     unsafe {
-        let back =
-            ptr::addr_of_mut!(BACKBUFFER)
-                as *mut u32;
+        let back = ptr::addr_of_mut!(BACKBUFFER) as *mut u32;
 
         for i in 0..(info.width * info.height) {
-            ptr::write_unaligned(
-                back.add(i),
-                pixel,
-            );
+            ptr::write_unaligned(back.add(i), pixel);
         }
     }
 }
-
 
 // ============================================================
 // Rectangle
 // ============================================================
 
-pub fn draw_rect(
-    x: usize,
-    y: usize,
-    width: usize,
-    height: usize,
-    color: Color,
-) {
+pub fn draw_rect(x: usize, y: usize, width: usize, height: usize, color: Color) {
     let info = info();
 
-    let end_x = x
-        .saturating_add(width)
-        .min(info.width);
+    let end_x = x.saturating_add(width).min(info.width);
 
-    let end_y = y
-        .saturating_add(height)
-        .min(info.height);
+    let end_y = y.saturating_add(height).min(info.height);
 
     for py in y..end_y {
         for px in x..end_x {
@@ -259,7 +206,6 @@ pub fn draw_rect(
         }
     }
 }
-
 
 // ============================================================
 // Present
@@ -269,27 +215,18 @@ pub fn present() {
     let info = info();
 
     unsafe {
-        let back =
-            ptr::addr_of!(BACKBUFFER)
-                as *const u8;
+        let back = ptr::addr_of!(BACKBUFFER) as *const u8;
 
         let front = info.front;
 
-        let row_size =
-            info.width * BYTES_PER_PIXEL;
+        let row_size = info.width * BYTES_PER_PIXEL;
 
         for y in 0..info.height {
-            let src =
-                back.add(y * row_size);
+            let src = back.add(y * row_size);
 
-            let dst =
-                front.add(y * info.front_pitch);
+            let dst = front.add(y * info.front_pitch);
 
-            ptr::copy_nonoverlapping(
-                src,
-                dst,
-                row_size,
-            );
+            ptr::copy_nonoverlapping(src, dst, row_size);
         }
     }
 }

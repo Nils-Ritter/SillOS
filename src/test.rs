@@ -13,7 +13,6 @@ impl TestResult {
     }
 }
 
-
 // ============================================================
 // Test registration
 // ============================================================
@@ -25,7 +24,6 @@ pub struct Test {
     pub name: &'static str,
     pub function: TestFn,
 }
-
 
 // ============================================================
 // Linker-provided test section
@@ -47,7 +45,6 @@ unsafe extern "C" {
     static __kernel_tests_end: Test;
 }
 
-
 // ============================================================
 // Run all tests
 // ============================================================
@@ -63,16 +60,12 @@ pub fn run() -> ! {
     let mut passed = 0usize;
     let mut failed = 0usize;
 
-    let mut current: *const Test =
-        &raw const __kernel_tests_start;
+    let mut current: *const Test = &raw const __kernel_tests_start;
 
-    let end: *const Test =
-        &raw const __kernel_tests_end;
+    let end: *const Test = &raw const __kernel_tests_end;
 
     while current < end {
-        let test = unsafe {
-            &*current
-        };
+        let test = unsafe { &*current };
 
         total += 1;
 
@@ -95,9 +88,7 @@ pub fn run() -> ! {
             }
         }
 
-        current = unsafe {
-            current.add(1)
-        };
+        current = unsafe { current.add(1) };
     }
 
     serial_println!();
@@ -125,7 +116,6 @@ pub fn run() -> ! {
     }
 }
 
-
 // ============================================================
 // QEMU exit
 // ============================================================
@@ -134,11 +124,7 @@ fn exit_qemu(success: bool) -> ! {
     //
     // QEMU's isa-debug-exit device listens on port 0xf4.
     //
-    let code: u32 = if success {
-        0x10
-    } else {
-        0x11
-    };
+    let code: u32 = if success { 0x10 } else { 0x11 };
 
     unsafe {
         core::arch::asm!(

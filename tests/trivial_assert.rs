@@ -1,4 +1,4 @@
-use crate::test::{test, TestResult};
+use crate::test::{TestResult, test};
 
 #[test]
 fn manual_assert() -> TestResult {

@@ -2,15 +2,15 @@
 #![no_main]
 
 mod fb;
+mod font;
 mod serial;
 mod test;
-mod font;
 
 #[cfg(feature = "test")]
 #[path = "../tests/trivial_assert.rs"]
 mod trivial_assert;
 
-pub use crate::test::{test, TestResult};
+pub use crate::test::{TestResult, test};
 
 extern crate sillos_test_macro;
 
@@ -21,20 +21,15 @@ use core::panic::PanicInfo;
 
 pub const DEBUG_TOGGLE: bool = true;
 
-use limine::{
-    RequestsEndMarker,
-    RequestsStartMarker,
-};
+use limine::{RequestsEndMarker, RequestsStartMarker};
 
 #[used]
 #[unsafe(link_section = ".limine_req_start")]
-static REQUESTS_START_MARKER: RequestsStartMarker =
-    RequestsStartMarker::new();
+static REQUESTS_START_MARKER: RequestsStartMarker = RequestsStartMarker::new();
 
 #[used]
 #[unsafe(link_section = ".limine_req_end")]
-static REQUESTS_END_MARKER: RequestsEndMarker =
-    RequestsEndMarker::new();
+static REQUESTS_END_MARKER: RequestsEndMarker = RequestsEndMarker::new();
 
 #[unsafe(no_mangle)]
 #[unsafe(link_section = ".text.entry")]
@@ -56,7 +51,7 @@ pub extern "C" fn kmain() -> ! {
     }
 }
 
-fn kernel(){
+fn kernel() {
     serial_println!("1: entered kernel");
 
     fb::init();
@@ -67,13 +62,7 @@ fn kernel(){
 
     serial_println!("3: clear returned");
 
-    fb::draw_rect(
-        100,
-        100,
-        300,
-        200,
-        fb::Color::RED,
-    );
+    fb::draw_rect(100, 100, 300, 200, fb::Color::RED);
 
     serial_println!("4: draw_rect returned");
 
@@ -84,7 +73,6 @@ fn kernel(){
     fb::present();
 
     serial_println!("5: present returned");
-
 }
 
 #[panic_handler]

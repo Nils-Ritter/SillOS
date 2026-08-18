@@ -84,9 +84,22 @@ console along with the normal kernel output.
 │   └── config.toml       # Cargo target and runner configuration
 ├── src/
 │   └── main.rs           # Kernel entry point
+│   └── ...
+├── limine/               # The limine bootloader files
+│   └── ...
+├── tests/                # The tests
+│   └── ...
 ├── Cargo.toml            # Project manifest
 ├── Cargo.lock            # Locked dependency versions
-└── README.md
+├── test_macro/           # Cargo project for testing
+│   └── src/
+│       └── lib.rs
+│   └── Cargo.toml        
+├── README.md             # The file youre reading right now
+├── limine.conf           # Limine bootloader config
+├── linker.ld             # Linker config
+├── rust-toolchain        # Rust toolchain setting
+└── Makefile              # The makefile
 ```
 
 ## Development

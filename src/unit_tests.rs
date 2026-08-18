@@ -1,4 +1,4 @@
-use crate::test::{test, TestResult};
+use crate::test::{TestResult, test};
 
 #[test]
 fn test_runner_works() -> TestResult {
@@ -7,9 +7,9 @@ fn test_runner_works() -> TestResult {
 
 #[test]
 fn simple_addition() -> TestResult {
-    if 1+1==2 {
+    if 1 + 1 == 2 {
         return TestResult::Pass;
-    }else{
+    } else {
         return TestResult::Fail("lksjdf");
     }
 }
