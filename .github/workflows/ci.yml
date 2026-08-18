@@ -25,7 +25,7 @@ jobs:
         uses: dtolnay/rust-toolchain@nightly
         with:
           targets: x86_64-unknown-none
-          components: rustfmt
+          components: rustfmt, rust-src
 
       - name: Build OS
         run: make
@@ -50,6 +50,7 @@ jobs:
         uses: dtolnay/rust-toolchain@nightly
         with:
           targets: x86_64-unknown-none
+          components: rust-src
 
       - name: Run kernel tests
         run: make test
@@ -77,6 +78,7 @@ jobs:
         uses: dtolnay/rust-toolchain@nightly
         with:
           targets: x86_64-unknown-none
+          components: rust-src
 
       - name: Build ISO
         run: make
