@@ -29,6 +29,10 @@ mod kmem_tests;
 #[path = "../tests/interrupts.rs"]
 mod interrupts_test;
 
+#[cfg(feature = "test")]
+#[path = "../tests/memory_tests.rs"]
+mod memory_tests;
+
 use crate::memory::{frame_alloc::FrameAllocator, page_alloc::{Page, VirtAddr}, page_table::{Mapper, PageTableFlags}};
 pub use crate::test::{TestResult, test};
 

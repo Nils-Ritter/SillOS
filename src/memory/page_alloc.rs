@@ -40,8 +40,15 @@ impl VirtAddr {
 }
 
 impl fmt::Debug for VirtAddr {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "{:#018x}", self.0)
+    fn fmt(
+        &self,
+        f: &mut fmt::Formatter<'_>,
+    ) -> fmt::Result {
+        write!(
+            f,
+            "{:#018x}",
+            self.0
+        )
     }
 }
 
@@ -53,7 +60,6 @@ pub struct Page {
 }
 
 impl Page {
-    /// Create a page from an aligned virtual address.
     pub const fn from_start_address(
         address: VirtAddr,
     ) -> Option<Self> {
@@ -66,7 +72,6 @@ impl Page {
         }
     }
 
-    /// Return the page containing `address`.
     pub const fn containing_address(
         address: VirtAddr,
     ) -> Self {
@@ -79,34 +84,32 @@ impl Page {
         self.start_address
     }
 
-    /// Zero-based page number within the virtual address space.
     pub const fn number(self) -> u64 {
         self.start_address.as_u64() / FRAME_SIZE
     }
 
-    /// Return the PML4 index used by x86-64 page tables.
     pub const fn pml4_index(self) -> usize {
         ((self.start_address.as_u64() >> 39) & 0x1ff) as usize
     }
 
-    /// Return the PDPT index used by x86-64 page tables.
     pub const fn pdpt_index(self) -> usize {
         ((self.start_address.as_u64() >> 30) & 0x1ff) as usize
     }
 
-    /// Return the page-directory index used by x86-64 page tables.
     pub const fn pd_index(self) -> usize {
         ((self.start_address.as_u64() >> 21) & 0x1ff) as usize
     }
 
-    /// Return the page-table index used by x86-64 page tables.
     pub const fn pt_index(self) -> usize {
         ((self.start_address.as_u64() >> 12) & 0x1ff) as usize
     }
 }
 
 impl fmt::Debug for Page {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+    fn fmt(
+        &self,
+        f: &mut fmt::Formatter<'_>,
+    ) -> fmt::Result {
         write!(
             f,
             "Page({:#018x})",
@@ -115,11 +118,9 @@ impl fmt::Debug for Page {
     }
 }
 
-/// A half-open virtual-address range.
+/// A half-open virtual address range.
 ///
-/// The range is:
-///
-///     [start, end)
+/// [start, end)
 ///
 /// Both addresses must be page aligned.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -133,7 +134,9 @@ impl PageRange {
         start: VirtAddr,
         end: VirtAddr,
     ) -> Option<Self> {
-        if !start.is_aligned() || !end.is_aligned() {
+        if !start.is_aligned()
+            || !end.is_aligned()
+        {
             return None;
         }
 
@@ -141,7 +144,10 @@ impl PageRange {
             return None;
         }
 
-        Some(Self { start, end })
+        Some(Self {
+            start,
+            end,
+        })
     }
 
     pub const fn start(self) -> VirtAddr {
@@ -152,22 +158,26 @@ impl PageRange {
         self.end
     }
 
-    /// Number of pages in this range.
     pub const fn page_count(self) -> u64 {
         (self.end.as_u64() - self.start.as_u64())
             / FRAME_SIZE
     }
 
-    /// Return the page at `index`.
-    pub fn page_at(self, index: u64) -> Option<Page> {
+    pub fn page_at(
+        self,
+        index: u64,
+    ) -> Option<Page> {
         if index >= self.page_count() {
             return None;
         }
 
-        let address = self
-            .start
-            .as_u64()
-            .checked_add(index * FRAME_SIZE)?;
+        let offset =
+            index.checked_mul(FRAME_SIZE)?;
+
+        let address =
+            self.start
+                .as_u64()
+                .checked_add(offset)?;
 
         Page::from_start_address(
             VirtAddr::new(address)
@@ -175,32 +185,18 @@ impl PageRange {
     }
 }
 
-/// Errors produced by the virtual page allocator.
+/// Errors produced by the virtual-page allocator.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum PageAllocatorError {
-    /// The supplied range was not page aligned.
     UnalignedRange,
-
-    /// The supplied range was empty or backwards.
     InvalidRange,
-
-    /// The range is too large for the bitmap representation.
     RangeTooLarge,
-
-    /// The allocator cannot represent this many pages.
     TooManyPages,
-
-    /// The bitmap itself could not be represented.
     BitmapTooLarge,
-
-    /// The page does not belong to this allocator.
     InvalidPage,
-
-    /// The page was already allocated.
     AlreadyAllocated,
-
-    /// The page was already free.
     AlreadyFree,
+    ReservationOutsideRange,
 }
 
 /// Statistics about the virtual-page allocator.
@@ -218,12 +214,20 @@ pub struct PageAllocatorStats {
 ///     0 = free
 ///     1 = allocated
 ///
-/// Unlike the physical frame allocator, this allocator does not know or care
-/// about physical memory. It only manages virtual address space.
+/// This allocator only manages virtual address ownership.
+///
+/// It does NOT:
+///
+/// - create page tables
+/// - map physical frames
+/// - unmap pages
+/// - flush TLB entries
+///
+/// Those responsibilities belong to the mapper/address-space layer.
 pub struct BitmapPageAllocator {
     bitmap: &'static mut [u64],
 
-    /// First virtual page represented by the bitmap.
+    /// First virtual page represented by this allocator.
     start_page: u64,
 
     /// Number of virtual pages represented.
@@ -232,22 +236,22 @@ pub struct BitmapPageAllocator {
     /// Number of currently free pages.
     free_pages: u64,
 
-    /// Bitmap word from which the next allocation begins.
+    /// Bitmap word from which allocation starts.
     next_word: usize,
 }
 
 impl BitmapPageAllocator {
     /// Create a virtual page allocator.
     ///
-    /// `range` specifies the virtual address space managed by this allocator.
+    /// `range` is the virtual address space controlled by this allocator.
     ///
-    /// `bitmap_storage` must point to writable memory that is large enough
-    /// for the bitmap returned by `bitmap_size_for_pages()`.
+    /// `bitmap_storage` must contain at least the number of u64 words
+    /// returned by `bitmap_words_for_pages()`.
     ///
     /// # Safety
     ///
-    /// `bitmap_storage` must point to valid writable memory for the duration
-    /// of this allocator's lifetime.
+    /// `bitmap_storage` must remain valid and writable for the lifetime
+    /// of this allocator.
     pub unsafe fn new(
         range: PageRange,
         bitmap_storage: &'static mut [u64],
@@ -256,26 +260,29 @@ impl BitmapPageAllocator {
             range.page_count();
 
         if page_count == 0 {
-            return Err(PageAllocatorError::InvalidRange);
+            return Err(
+                PageAllocatorError::InvalidRange
+            );
         }
 
         let required_words =
-            bitmap_words_for_pages(page_count)?;
+            bitmap_words_for_pages(
+                page_count
+            )?;
 
-        if bitmap_storage.len() < required_words {
-            return Err(PageAllocatorError::BitmapTooLarge);
+        if bitmap_storage.len()
+            < required_words
+        {
+            return Err(
+                PageAllocatorError::BitmapTooLarge
+            );
         }
-
-        //
-        // Start with every virtual page free.
-        //
 
         bitmap_storage[..required_words]
             .fill(0);
 
         //
-        // If the final word has unused bits beyond page_count, mark them
-        // allocated so that they can never accidentally be returned.
+        // Mark unused bits in the final bitmap word as allocated.
         //
 
         let remaining_bits =
@@ -290,46 +297,67 @@ impl BitmapPageAllocator {
         }
 
         Ok(Self {
-            bitmap: &mut bitmap_storage[..required_words],
-            start_page: range.start.as_u64() / FRAME_SIZE,
+            bitmap:
+                &mut bitmap_storage[..required_words],
+
+            start_page:
+                range.start.as_u64()
+                    / FRAME_SIZE,
+
             page_count,
-            free_pages: page_count,
+
+            free_pages:
+                page_count,
+
             next_word: 0,
         })
     }
 
-    /// Total number of virtual pages managed.
     pub const fn total_pages(&self) -> u64 {
         self.page_count
     }
 
-    /// Number of currently free pages.
     pub const fn free_pages(&self) -> u64 {
         self.free_pages
     }
 
-    /// Number of allocated pages.
     pub const fn allocated_pages(&self) -> u64 {
-        self.page_count - self.free_pages
+        self.page_count
+            - self.free_pages
     }
 
-    /// Return allocator statistics.
-    pub const fn stats(&self) -> PageAllocatorStats {
+    pub const fn stats(
+        &self,
+    ) -> PageAllocatorStats {
         PageAllocatorStats {
-            total_pages: self.page_count,
-            free_pages: self.free_pages,
-            allocated_pages: self.allocated_pages(),
+            total_pages:
+                self.page_count,
+
+            free_pages:
+                self.free_pages,
+
+            allocated_pages:
+                self.allocated_pages(),
         }
     }
 
     /// Allocate one virtual page.
-    pub fn allocate(&mut self) -> Option<Page> {
+    pub fn allocate(
+        &mut self,
+    ) -> Option<Page> {
         if self.free_pages == 0 {
             return None;
         }
 
-        for word_index in
-            self.next_word..self.bitmap.len()
+        let word_count =
+            self.bitmap.len();
+
+        //
+        // First search from the cursor.
+        //
+
+        for word_index
+            in self.next_word..word_count
         {
             let word =
                 self.bitmap[word_index];
@@ -339,29 +367,27 @@ impl BitmapPageAllocator {
             }
 
             let bit_index =
-                (!word).trailing_zeros() as usize;
+                (!word)
+                    .trailing_zeros()
+                    as usize;
 
             let local_page_index =
                 word_index
                     .checked_mul(64)?
-                    .checked_add(bit_index)?;
+                    .checked_add(
+                        bit_index
+                    )?;
 
-            if local_page_index >= self.page_count as usize {
+            if local_page_index
+                >= self.page_count as usize
+            {
                 continue;
             }
-
-            //
-            // Mark allocated.
-            //
 
             self.bitmap[word_index] |=
                 1u64 << bit_index;
 
             self.free_pages -= 1;
-
-            //
-            // Keep scanning from here on the next allocation.
-            //
 
             self.next_word =
                 word_index;
@@ -374,7 +400,9 @@ impl BitmapPageAllocator {
 
             let address =
                 page_number
-                    .checked_mul(FRAME_SIZE)?;
+                    .checked_mul(
+                        FRAME_SIZE
+                    )?;
 
             return Page::from_start_address(
                 VirtAddr::new(address)
@@ -382,9 +410,63 @@ impl BitmapPageAllocator {
         }
 
         //
-        // free_pages said there was a page available, but the bitmap didn't
-        // contain one. This means our internal bookkeeping is inconsistent.
+        // We may have wrapped around.
         //
+        // This matters when pages are freed before the current cursor.
+        //
+
+        for word_index in
+            0..self.next_word
+        {
+            let word =
+                self.bitmap[word_index];
+
+            if word == u64::MAX {
+                continue;
+            }
+
+            let bit_index =
+                (!word)
+                    .trailing_zeros()
+                    as usize;
+
+            let local_page_index =
+                word_index
+                    .checked_mul(64)?
+                    .checked_add(
+                        bit_index
+                    )?;
+
+            if local_page_index
+                >= self.page_count as usize
+            {
+                continue;
+            }
+
+            self.bitmap[word_index] |=
+                1u64 << bit_index;
+
+            self.free_pages -= 1;
+
+            self.next_word =
+                word_index;
+
+            let page_number =
+                self.start_page
+                    .checked_add(
+                        local_page_index as u64
+                    )?;
+
+            let address =
+                page_number
+                    .checked_mul(
+                        FRAME_SIZE
+                    )?;
+
+            return Page::from_start_address(
+                VirtAddr::new(address)
+            );
+        }
 
         debug_assert!(
             false,
@@ -396,13 +478,7 @@ impl BitmapPageAllocator {
 
     /// Free a virtual page.
     ///
-    /// This only releases the virtual address. It does NOT:
-    ///
-    /// - unmap the page table entry
-    /// - free the physical frame
-    /// - invalidate the TLB
-    ///
-    /// Those responsibilities belong to the page-table/address-space layer.
+    /// This only releases the virtual address.
     pub fn deallocate(
         &mut self,
         page: Page,
@@ -419,7 +495,10 @@ impl BitmapPageAllocator {
         let mask =
             1u64 << bit_index;
 
-        if self.bitmap[word_index] & mask == 0 {
+        if self.bitmap[word_index]
+            & mask
+            == 0
+        {
             return Err(
                 PageAllocatorError::AlreadyFree
             );
@@ -429,11 +508,6 @@ impl BitmapPageAllocator {
 
         self.free_pages += 1;
 
-        //
-        // If this page occurs before our current scan position, make it
-        // eligible for allocation immediately.
-        //
-
         if word_index < self.next_word {
             self.next_word =
                 word_index;
@@ -442,7 +516,7 @@ impl BitmapPageAllocator {
         Ok(())
     }
 
-    /// Check whether a page is currently allocated.
+    /// Check whether a page is allocated.
     pub fn is_allocated(
         &self,
         page: Page,
@@ -463,73 +537,80 @@ impl BitmapPageAllocator {
         )
     }
 
-    /// Convert an absolute page number into a bitmap index.
-    fn page_index(
-        &self,
-        page: Page,
-    ) -> Result<usize, PageAllocatorError> {
-        let page_number =
-            page.number();
-
-        if page_number < self.start_page {
-            return Err(
-                PageAllocatorError::InvalidPage
-            );
-        }
-
-        let index =
-            page_number - self.start_page;
-
-        if index >= self.page_count {
-            return Err(
-                PageAllocatorError::InvalidPage
-            );
-        }
-
-        usize::try_from(index)
-            .map_err(|_| PageAllocatorError::InvalidPage)
-    }
-
-    /// Mark a range of pages as allocated.
+    /// Reserve an entire virtual range.
     ///
-    /// Useful when reserving areas such as:
-    ///
-    /// - kernel image
-    /// - HHDM
-    /// - MMIO
-    /// - bootloader mappings
-    ///
-    /// This should generally be done during initialization, before the
-    /// allocator is exposed to the rest of the kernel.
+    /// The range must be completely contained inside this allocator's range.
     pub fn reserve(
         &mut self,
         range: PageRange,
     ) -> Result<(), PageAllocatorError> {
-        let start =
-            self.page_index(
-                Page::from_start_address(
-                    range.start()
-                )
-                .unwrap()
-            )?;
+        let start_page =
+            range.start()
+                .as_u64()
+                / FRAME_SIZE;
 
         let end_page =
-            Page::from_start_address(
-                VirtAddr::new(
-                    range.end().as_u64()
+            range.end()
+                .as_u64()
+                / FRAME_SIZE;
+
+        if start_page < self.start_page {
+            return Err(
+                PageAllocatorError::ReservationOutsideRange
+            );
+        }
+
+        let relative_start =
+            start_page
+                - self.start_page;
+
+        let relative_end =
+            end_page
+                .checked_sub(
+                    self.start_page
                 )
-            )
-            .unwrap();
+                .ok_or(
+                    PageAllocatorError::ReservationOutsideRange
+                )?;
 
-        let end =
-            self.page_index(end_page)
-                .unwrap_or(self.page_count as usize);
+        if relative_end
+            > self.page_count
+        {
+            return Err(
+                PageAllocatorError::ReservationOutsideRange
+            );
+        }
 
-        if end < start {
+        if relative_start
+            >= relative_end
+        {
             return Err(
                 PageAllocatorError::InvalidRange
             );
         }
+
+        let start =
+            usize::try_from(
+                relative_start
+            )
+            .map_err(|_| {
+                PageAllocatorError::TooManyPages
+            })?;
+
+        let end =
+            usize::try_from(
+                relative_end
+            )
+            .map_err(|_| {
+                PageAllocatorError::TooManyPages
+            })?;
+
+        //
+        // Check everything first.
+        //
+        // This means a failed reservation does not partially modify the
+        // bitmap.
+        //
 
         for index in start..end {
             let word_index =
@@ -541,46 +622,92 @@ impl BitmapPageAllocator {
             let mask =
                 1u64 << bit_index;
 
-            if self.bitmap[word_index] & mask != 0 {
+            if self.bitmap[word_index]
+                & mask
+                != 0
+            {
                 return Err(
                     PageAllocatorError::AlreadyAllocated
                 );
             }
+        }
 
-            self.bitmap[word_index] |= mask;
+        //
+        // Now perform the reservation.
+        //
+
+        for index in start..end {
+            let word_index =
+                index / 64;
+
+            let bit_index =
+                index % 64;
+
+            self.bitmap[word_index] |=
+                1u64 << bit_index;
 
             self.free_pages -= 1;
         }
 
-        //
-        // The next allocation scan should be allowed to start from the
-        // beginning if the reservation was before the cursor.
-        //
+        let start_word =
+            start / 64;
 
-        if start / 64 < self.next_word {
+        if start_word < self.next_word {
             self.next_word =
-                start / 64;
+                start_word;
         }
 
         Ok(())
     }
 
-    /// Debug-only consistency verification.
+    fn page_index(
+        &self,
+        page: Page,
+    ) -> Result<usize, PageAllocatorError> {
+        let page_number =
+            page.number();
+
+        if page_number
+            < self.start_page
+        {
+            return Err(
+                PageAllocatorError::InvalidPage
+            );
+        }
+
+        let index =
+            page_number
+                - self.start_page;
+
+        if index
+            >= self.page_count
+        {
+            return Err(
+                PageAllocatorError::InvalidPage
+            );
+        }
+
+        usize::try_from(index)
+            .map_err(|_| {
+                PageAllocatorError::InvalidPage
+            })
+    }
+
     #[cfg(debug_assertions)]
     pub fn verify(&self) {
         let mut free_pages = 0u64;
 
-        for (word_index, &word)
-            in self.bitmap.iter().enumerate()
+        for (
+            word_index,
+            &word,
+        ) in self.bitmap.iter().enumerate()
         {
             let mut free_bits =
                 !word;
 
-            //
-            // Ignore padding bits in the final word.
-            //
-
-            if word_index + 1 == self.bitmap.len() {
+            if word_index + 1
+                == self.bitmap.len()
+            {
                 let valid_bits =
                     self.page_count % 64;
 
@@ -591,7 +718,8 @@ impl BitmapPageAllocator {
             }
 
             free_pages +=
-                free_bits.count_ones() as u64;
+                free_bits.count_ones()
+                    as u64;
         }
 
         assert_eq!(
@@ -602,14 +730,10 @@ impl BitmapPageAllocator {
     }
 }
 
-/// Calculate how many u64 words are needed for `page_count` pages.
-fn bitmap_words_for_pages(
+/// Calculate the number of u64 words needed for a bitmap.
+pub fn bitmap_words_for_pages(
     page_count: u64,
 ) -> Result<usize, PageAllocatorError> {
-    //
-    // ceil(page_count / 64)
-    //
-
     let words =
         page_count
             .checked_add(63)
@@ -619,5 +743,28 @@ fn bitmap_words_for_pages(
             / 64;
 
     usize::try_from(words)
-        .map_err(|_| PageAllocatorError::TooManyPages)
+        .map_err(|_| {
+            PageAllocatorError::TooManyPages
+        })
+}
+
+/// Calculate the number of bytes needed for a bitmap.
+pub fn bitmap_bytes_for_pages(
+    page_count: u64,
+) -> Result<u64, PageAllocatorError> {
+    let words =
+        bitmap_words_for_pages(
+            page_count
+        )?;
+
+    let words =
+        u64::try_from(words)
+            .map_err(|_| {
+                PageAllocatorError::BitmapTooLarge
+            })?;
+
+    words.checked_mul(8)
+        .ok_or(
+            PageAllocatorError::BitmapTooLarge
+        )
 }

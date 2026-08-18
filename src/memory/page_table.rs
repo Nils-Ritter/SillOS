@@ -16,62 +16,114 @@ use super::page_alloc::{
 pub const PAGE_TABLE_ENTRIES: usize = 512;
 pub const PAGE_TABLE_SIZE: usize = 4096;
 
-/// x86-64 page table entry flags.
+/// x86-64 page-table entry flags.
 #[derive(Clone, Copy, PartialEq, Eq)]
 #[repr(transparent)]
 pub struct PageTableFlags(u64);
 
 impl PageTableFlags {
-    pub const EMPTY: Self = Self(0);
+    pub const EMPTY: Self =
+        Self(0);
 
-    pub const PRESENT: Self = Self(1 << 0);
-    pub const WRITABLE: Self = Self(1 << 1);
-    pub const USER_ACCESSIBLE: Self = Self(1 << 2);
-    pub const WRITE_THROUGH: Self = Self(1 << 3);
-    pub const NO_CACHE: Self = Self(1 << 4);
-    pub const ACCESSED: Self = Self(1 << 5);
-    pub const DIRTY: Self = Self(1 << 6);
-    pub const HUGE_PAGE: Self = Self(1 << 7);
-    pub const GLOBAL: Self = Self(1 << 8);
+    pub const PRESENT: Self =
+        Self(1 << 0);
 
-    pub const NO_EXECUTE: Self = Self(1 << 63);
+    pub const WRITABLE: Self =
+        Self(1 << 1);
 
-    pub const fn bits(self) -> u64 {
+    pub const USER_ACCESSIBLE: Self =
+        Self(1 << 2);
+
+    pub const WRITE_THROUGH: Self =
+        Self(1 << 3);
+
+    pub const NO_CACHE: Self =
+        Self(1 << 4);
+
+    pub const ACCESSED: Self =
+        Self(1 << 5);
+
+    pub const DIRTY: Self =
+        Self(1 << 6);
+
+    pub const HUGE_PAGE: Self =
+        Self(1 << 7);
+
+    pub const GLOBAL: Self =
+        Self(1 << 8);
+
+    pub const NO_EXECUTE: Self =
+        Self(1 << 63);
+
+    pub const fn bits(
+        self,
+    ) -> u64 {
         self.0
     }
 
-    pub const fn contains(self, other: Self) -> bool {
-        self.0 & other.0 == other.0
+    pub const fn contains(
+        self,
+        other: Self,
+    ) -> bool {
+        self.0 & other.0
+            == other.0
     }
 
-    pub const fn union(self, other: Self) -> Self {
-        Self(self.0 | other.0)
+    pub const fn union(
+        self,
+        other: Self,
+    ) -> Self {
+        Self(
+            self.0 | other.0
+        )
     }
 
-    pub const fn remove(self, other: Self) -> Self {
-        Self(self.0 & !other.0)
+    pub const fn remove(
+        self,
+        other: Self,
+    ) -> Self {
+        Self(
+            self.0 & !other.0
+        )
     }
 }
 
-impl core::ops::BitOr for PageTableFlags {
+impl core::ops::BitOr
+    for PageTableFlags
+{
     type Output = Self;
 
-    fn bitor(self, rhs: Self) -> Self {
+    fn bitor(
+        self,
+        rhs: Self,
+    ) -> Self {
         self.union(rhs)
     }
 }
 
-impl core::ops::BitOrAssign for PageTableFlags {
-    fn bitor_assign(&mut self, rhs: Self) {
+impl core::ops::BitOrAssign
+    for PageTableFlags
+{
+    fn bitor_assign(
+        &mut self,
+        rhs: Self,
+    ) {
         self.0 |= rhs.0;
     }
 }
 
-impl core::ops::BitAnd for PageTableFlags {
+impl core::ops::BitAnd
+    for PageTableFlags
+{
     type Output = Self;
 
-    fn bitand(self, rhs: Self) -> Self {
-        Self(self.0 & rhs.0)
+    fn bitand(
+        self,
+        rhs: Self,
+    ) -> Self {
+        Self(
+            self.0 & rhs.0
+        )
     }
 }
 
@@ -80,14 +132,15 @@ impl fmt::Debug for PageTableFlags {
         &self,
         f: &mut fmt::Formatter<'_>,
     ) -> fmt::Result {
-        write!(f, "PageTableFlags({:#x})", self.0)
+        write!(
+            f,
+            "PageTableFlags({:#x})",
+            self.0
+        )
     }
 }
 
 /// An x86-64 page-table entry.
-///
-/// Bits 12..=51 contain the physical address.
-/// The remaining bits contain architecture-defined flags.
 #[repr(transparent)]
 #[derive(Clone, Copy)]
 pub struct PageTableEntry(u64);
@@ -97,15 +150,23 @@ impl PageTableEntry {
         Self(0)
     }
 
-    pub const fn bits(self) -> u64 {
+    pub const fn bits(
+        self,
+    ) -> u64 {
         self.0
     }
 
-    pub const fn is_present(self) -> bool {
-        self.0 & PageTableFlags::PRESENT.bits() != 0
+    pub const fn is_present(
+        self,
+    ) -> bool {
+        self.0
+            & PageTableFlags::PRESENT.bits()
+            != 0
     }
 
-    pub const fn flags(self) -> PageTableFlags {
+    pub const fn flags(
+        self,
+    ) -> PageTableFlags {
         PageTableFlags(
             self.0
                 & (
@@ -115,13 +176,16 @@ impl PageTableEntry {
         )
     }
 
-    pub fn frame(self) -> Option<PhysFrame> {
+    pub fn frame(
+        self,
+    ) -> Option<PhysFrame> {
         if !self.is_present() {
             return None;
         }
 
         let address =
-            self.0 & 0x000f_ffff_ffff_f000;
+            self.0
+                & 0x000f_ffff_ffff_f000;
 
         PhysFrame::from_start_address(
             PhysAddr::new(address)
@@ -134,12 +198,18 @@ impl PageTableEntry {
         flags: PageTableFlags,
     ) {
         self.0 =
-            (frame.start_address().as_u64()
-                & 0x000f_ffff_ffff_f000)
-                | flags.bits();
+            (
+                frame
+                    .start_address()
+                    .as_u64()
+                    & 0x000f_ffff_ffff_f000
+            )
+            | flags.bits();
     }
 
-    pub fn clear(&mut self) {
+    pub fn clear(
+        &mut self,
+    ) {
         self.0 = 0;
     }
 }
@@ -149,28 +219,34 @@ impl fmt::Debug for PageTableEntry {
         &self,
         f: &mut fmt::Formatter<'_>,
     ) -> fmt::Result {
-        if let Some(frame) = self.frame() {
-            f.debug_struct("PageTableEntry")
-                .field("frame", &frame)
-                .field("flags", &self.flags())
-                .finish()
+        if let Some(frame) =
+            self.frame()
+        {
+            f.debug_struct(
+                "PageTableEntry"
+            )
+            .field(
+                "frame",
+                &frame
+            )
+            .field(
+                "flags",
+                &self.flags()
+            )
+            .finish()
         } else {
-            f.write_str("PageTableEntry::Empty")
+            f.write_str(
+                "PageTableEntry::Empty"
+            )
         }
     }
 }
 
 /// One 4 KiB x86-64 page table.
-///
-/// Used for:
-///
-/// - PML4
-/// - PDPT
-/// - Page directory
-/// - Page table
 #[repr(C, align(4096))]
 pub struct PageTable {
-    entries: [PageTableEntry; PAGE_TABLE_ENTRIES],
+    entries:
+        [PageTableEntry; PAGE_TABLE_ENTRIES],
 }
 
 impl PageTable {
@@ -183,8 +259,12 @@ impl PageTable {
         }
     }
 
-    pub fn zero(&mut self) {
-        for entry in &mut self.entries {
+    pub fn zero(
+        &mut self,
+    ) {
+        for entry
+            in &mut self.entries
+        {
             entry.clear();
         }
     }
@@ -205,13 +285,15 @@ impl PageTable {
 
     pub fn entries(
         &self,
-    ) -> &[PageTableEntry; PAGE_TABLE_ENTRIES] {
+    ) -> &[PageTableEntry; PAGE_TABLE_ENTRIES]
+    {
         &self.entries
     }
 
     pub fn entries_mut(
         &mut self,
-    ) -> &mut [PageTableEntry; PAGE_TABLE_ENTRIES] {
+    ) -> &mut [PageTableEntry; PAGE_TABLE_ENTRIES]
+    {
         &mut self.entries
     }
 }
@@ -239,14 +321,6 @@ pub struct UnmapResult {
 }
 
 /// x86-64 page-table mapper.
-///
-/// The mapper does NOT borrow or own the frame allocator.
-///
-/// This is intentional. A mapper can therefore coexist with direct
-/// allocations/deallocations from the physical frame allocator.
-///
-/// The frame allocator is passed only to operations that may need to
-/// allocate intermediate page tables.
 pub struct Mapper {
     pml4_frame: PhysFrame,
     hhdm_offset: u64,
@@ -257,8 +331,7 @@ impl Mapper {
     ///
     /// # Safety
     ///
-    /// `pml4_frame` must point to the active/valid x86-64 PML4 and
-    /// `hhdm_offset` must provide access to physical memory.
+    /// `pml4_frame` must refer to a valid active PML4.
     pub unsafe fn new(
         pml4_frame: PhysFrame,
         hhdm_offset: u64,
@@ -269,29 +342,34 @@ impl Mapper {
         }
     }
 
-    pub const fn pml4_frame(&self) -> PhysFrame {
+    pub const fn pml4_frame(
+        &self,
+    ) -> PhysFrame {
         self.pml4_frame
     }
 
     fn phys_to_virt(
         &self,
         address: PhysAddr,
-    ) -> Result<*mut u8, MapperError> {
+    ) -> Result<
+        *mut u8,
+        MapperError,
+    > {
         let virtual_address =
             self.hhdm_offset
-                .checked_add(address.as_u64())
+                .checked_add(
+                    address.as_u64()
+                )
                 .ok_or(
                     MapperError::HhdmAddressOverflow
                 )?;
 
-        Ok(virtual_address as *mut u8)
+        Ok(
+            virtual_address
+                as *mut u8
+        )
     }
 
-    /// Access a physical page table through the HHDM.
-    ///
-    /// # Safety
-    ///
-    /// `frame` must contain a valid page table and the HHDM must map it.
     unsafe fn table_from_frame(
         &self,
         frame: PhysFrame,
@@ -300,17 +378,14 @@ impl Mapper {
             self.phys_to_virt(
                 frame.start_address()
             )
-            .expect("HHDM address overflow")
+            .expect(
+                "HHDM address overflow"
+            )
             as *mut PageTable;
 
         &mut *pointer
     }
 
-    /// Get the current PML4.
-    ///
-    /// # Safety
-    ///
-    /// The configured PML4 must be valid and accessible through the HHDM.
     unsafe fn pml4(
         &self,
     ) -> &'static mut PageTable {
@@ -319,11 +394,14 @@ impl Mapper {
         )
     }
 
-    /// Allocate and initialize an intermediate page table.
     fn allocate_table(
         &self,
-        frame_allocator: &mut BitmapFrameAllocator,
-    ) -> Result<PhysFrame, MapperError> {
+        frame_allocator:
+            &mut BitmapFrameAllocator,
+    ) -> Result<
+        PhysFrame,
+        MapperError,
+    > {
         let frame =
             frame_allocator
                 .allocate()
@@ -331,84 +409,102 @@ impl Mapper {
                     MapperError::OutOfFrames
                 )?;
 
-        let table = unsafe {
-            self.table_from_frame(frame)
-        };
+        let table =
+            unsafe {
+                self.table_from_frame(
+                    frame
+                )
+            };
 
         table.zero();
 
         Ok(frame)
     }
 
-    /// Get or create the PDPT.
     fn get_or_create_pdpt(
         &self,
         page: Page,
-        frame_allocator: &mut BitmapFrameAllocator,
-    ) -> Result<&'static mut PageTable, MapperError> {
+        frame_allocator:
+            &mut BitmapFrameAllocator,
+    ) -> Result<
+        &'static mut PageTable,
+        MapperError,
+    > {
         let index =
             page.pml4_index();
 
-        let existing = unsafe {
-            self.pml4()
-                .entry(index)
-                .frame()
-        };
+        let existing =
+            unsafe {
+                self.pml4()
+                    .entry(index)
+                    .frame()
+            };
 
-        let frame = match existing {
-            Some(frame) => {
-                let entry = unsafe {
-                    self.pml4()
-                        .entry(index)
-                };
+        let frame =
+            match existing {
+                Some(frame) => {
+                    let entry =
+                        unsafe {
+                            self.pml4()
+                                .entry(index)
+                        };
 
-                if entry
-                    .flags()
-                    .contains(PageTableFlags::HUGE_PAGE)
-                {
-                    return Err(
-                        MapperError::HugePage
-                    );
-                }
-
-                frame
-            }
-
-            None => {
-                let frame =
-                    self.allocate_table(
-                        frame_allocator
-                    )?;
-
-                unsafe {
-                    self.pml4()
-                        .entry_mut(index)
-                        .set(
-                            frame,
-                            PageTableFlags::PRESENT
-                                | PageTableFlags::WRITABLE,
+                    if entry
+                        .flags()
+                        .contains(
+                            PageTableFlags::HUGE_PAGE
+                        )
+                    {
+                        return Err(
+                            MapperError::HugePage
                         );
+                    }
+
+                    frame
                 }
 
-                frame
-            }
-        };
+                None => {
+                    let frame =
+                        self.allocate_table(
+                            frame_allocator
+                        )?;
 
-        Ok(unsafe {
-            self.table_from_frame(frame)
-        })
+                    unsafe {
+                        self.pml4()
+                            .entry_mut(index)
+                            .set(
+                                frame,
+                                PageTableFlags::PRESENT
+                                    | PageTableFlags::WRITABLE,
+                            );
+                    }
+
+                    frame
+                }
+            };
+
+        Ok(
+            unsafe {
+                self.table_from_frame(
+                    frame
+                )
+            }
+        )
     }
 
-    /// Get or create the page directory.
     fn get_or_create_pd(
         &self,
         page: Page,
-        frame_allocator: &mut BitmapFrameAllocator,
-    ) -> Result<&'static mut PageTable, MapperError> {
+        frame_allocator:
+            &mut BitmapFrameAllocator,
+    ) -> Result<
+        &'static mut PageTable,
+        MapperError,
+    > {
         let pdpt =
             self.get_or_create_pdpt(
                 page,
-                frame_allocator,
+                frame_allocator
             )?;
 
         let index =
@@ -420,48 +516,58 @@ impl Mapper {
         if entry.is_present()
             && entry
                 .flags()
-                .contains(PageTableFlags::HUGE_PAGE)
+                .contains(
+                    PageTableFlags::HUGE_PAGE
+                )
         {
             return Err(
                 MapperError::HugePage
             );
         }
 
-        let frame = match entry.frame() {
-            Some(frame) => frame,
+        let frame =
+            match entry.frame() {
+                Some(frame) => frame,
 
-            None => {
-                let frame =
-                    self.allocate_table(
-                        frame_allocator
-                    )?;
+                None => {
+                    let frame =
+                        self.allocate_table(
+                            frame_allocator
+                        )?;
 
-                pdpt.entry_mut(index)
-                    .set(
-                        frame,
-                        PageTableFlags::PRESENT
-                            | PageTableFlags::WRITABLE,
-                    );
+                    pdpt.entry_mut(index)
+                        .set(
+                            frame,
+                            PageTableFlags::PRESENT
+                                | PageTableFlags::WRITABLE,
+                        );
 
-                frame
+                    frame
+                }
+            };
+
+        Ok(
+            unsafe {
+                self.table_from_frame(
+                    frame
+                )
             }
-        };
-
-        Ok(unsafe {
-            self.table_from_frame(frame)
-        })
+        )
     }
 
-    /// Get or create the page table.
     fn get_or_create_pt(
         &self,
         page: Page,
-        frame_allocator: &mut BitmapFrameAllocator,
-    ) -> Result<&'static mut PageTable, MapperError> {
+        frame_allocator:
+            &mut BitmapFrameAllocator,
+    ) -> Result<
+        &'static mut PageTable,
+        MapperError,
+    > {
         let pd =
             self.get_or_create_pd(
                 page,
-                frame_allocator,
+                frame_allocator
             )?;
 
         let index =
@@ -473,48 +579,58 @@ impl Mapper {
         if entry.is_present()
             && entry
                 .flags()
-                .contains(PageTableFlags::HUGE_PAGE)
+                .contains(
+                    PageTableFlags::HUGE_PAGE
+                )
         {
             return Err(
                 MapperError::HugePage
             );
         }
 
-        let frame = match entry.frame() {
-            Some(frame) => frame,
+        let frame =
+            match entry.frame() {
+                Some(frame) => frame,
 
-            None => {
-                let frame =
-                    self.allocate_table(
-                        frame_allocator
-                    )?;
+                None => {
+                    let frame =
+                        self.allocate_table(
+                            frame_allocator
+                        )?;
 
-                pd.entry_mut(index)
-                    .set(
-                        frame,
-                        PageTableFlags::PRESENT
-                            | PageTableFlags::WRITABLE,
-                    );
+                    pd.entry_mut(index)
+                        .set(
+                            frame,
+                            PageTableFlags::PRESENT
+                                | PageTableFlags::WRITABLE,
+                        );
 
-                frame
+                    frame
+                }
+            };
+
+        Ok(
+            unsafe {
+                self.table_from_frame(
+                    frame
+                )
             }
-        };
-
-        Ok(unsafe {
-            self.table_from_frame(frame)
-        })
+        )
     }
 
-    /// Get or create a PTE.
     fn get_or_create_pte(
         &self,
         page: Page,
-        frame_allocator: &mut BitmapFrameAllocator,
-    ) -> Result<&'static mut PageTableEntry, MapperError> {
+        frame_allocator:
+            &mut BitmapFrameAllocator,
+    ) -> Result<
+        &'static mut PageTableEntry,
+        MapperError,
+    > {
         let pt =
             self.get_or_create_pt(
                 page,
-                frame_allocator,
+                frame_allocator
             )?;
 
         Ok(
@@ -524,16 +640,17 @@ impl Mapper {
         )
     }
 
-    /// Find an existing PTE.
-    ///
-    /// This function NEVER allocates page tables.
     fn find_pte(
         &self,
         page: Page,
-    ) -> Result<&'static mut PageTableEntry, MapperError> {
-        let pml4 = unsafe {
-            self.pml4()
-        };
+    ) -> Result<
+        &'static mut PageTableEntry,
+        MapperError,
+    > {
+        let pml4 =
+            unsafe {
+                self.pml4()
+            };
 
         let pml4_entry =
             pml4.entry(
@@ -553,11 +670,12 @@ impl Mapper {
                     MapperError::InvalidPageTable
                 )?;
 
-        let pdpt = unsafe {
-            self.table_from_frame(
-                pdpt_frame
-            )
-        };
+        let pdpt =
+            unsafe {
+                self.table_from_frame(
+                    pdpt_frame
+                )
+            };
 
         let pdpt_entry =
             pdpt.entry(
@@ -572,7 +690,9 @@ impl Mapper {
 
         if pdpt_entry
             .flags()
-            .contains(PageTableFlags::HUGE_PAGE)
+            .contains(
+                PageTableFlags::HUGE_PAGE
+            )
         {
             return Err(
                 MapperError::HugePage
@@ -586,11 +706,12 @@ impl Mapper {
                     MapperError::InvalidPageTable
                 )?;
 
-        let pd = unsafe {
-            self.table_from_frame(
-                pd_frame
-            )
-        };
+        let pd =
+            unsafe {
+                self.table_from_frame(
+                    pd_frame
+                )
+            };
 
         let pd_entry =
             pd.entry(
@@ -605,7 +726,9 @@ impl Mapper {
 
         if pd_entry
             .flags()
-            .contains(PageTableFlags::HUGE_PAGE)
+            .contains(
+                PageTableFlags::HUGE_PAGE
+            )
         {
             return Err(
                 MapperError::HugePage
@@ -619,11 +742,12 @@ impl Mapper {
                     MapperError::InvalidPageTable
                 )?;
 
-        let pt = unsafe {
-            self.table_from_frame(
-                pt_frame
-            )
-        };
+        let pt =
+            unsafe {
+                self.table_from_frame(
+                    pt_frame
+                )
+            };
 
         Ok(
             pt.entry_mut(
@@ -632,20 +756,19 @@ impl Mapper {
         )
     }
 
-    /// Map a 4 KiB virtual page to a physical frame.
-    ///
-    /// Intermediate page tables are allocated as necessary.
+    /// Map a virtual page to an existing physical frame.
     pub fn map(
         &self,
         page: Page,
         frame: PhysFrame,
         flags: PageTableFlags,
-        frame_allocator: &mut BitmapFrameAllocator,
+        frame_allocator:
+            &mut BitmapFrameAllocator,
     ) -> Result<(), MapperError> {
         let entry =
             self.get_or_create_pte(
                 page,
-                frame_allocator,
+                frame_allocator
             )?;
 
         if entry.is_present() {
@@ -656,7 +779,25 @@ impl Mapper {
 
         entry.set(
             frame,
-            flags | PageTableFlags::PRESENT,
+            flags
+                | PageTableFlags::PRESENT
+        );
+
+        assert!(
+            entry.is_present(),
+            "PTE wasn't marked present"
+        );
+
+        assert_eq!(
+            entry.frame(),
+            Some(frame),
+            "PTE frame wasn't written correctly"
+        );
+
+        assert_eq!(
+            self.translate(page.start_address()),
+            Some(frame.start_address()),
+            "page table walk cannot find mapping immediately after map"
         );
 
         flush_tlb(
@@ -666,15 +807,55 @@ impl Mapper {
         Ok(())
     }
 
-    /// Unmap a 4 KiB virtual page.
+    /// Allocate a physical frame and map it.
+    ///
+    /// If mapping fails after the frame has been allocated, the frame is
+    /// returned to the physical allocator.
+    pub fn map_new(
+        &self,
+        page: Page,
+        flags: PageTableFlags,
+        frame_allocator:
+            &mut BitmapFrameAllocator,
+    ) -> Result<
+        PhysFrame,
+        MapperError,
+    > {
+        let frame =
+            frame_allocator
+                .allocate()
+                .ok_or(
+                    MapperError::OutOfFrames
+                )?;
+
+        match self.map(
+            page,
+            frame,
+            flags,
+            frame_allocator,
+        ) {
+            Ok(()) => Ok(frame),
+
+            Err(error) => {
+                let _ =
+                    frame_allocator
+                        .deallocate(frame);
+
+                Err(error)
+            }
+        }
+    }
+
+    /// Unmap a page.
     ///
     /// The physical frame is returned to the caller.
-    ///
-    /// This function does NOT return the frame to the frame allocator.
     pub fn unmap(
         &self,
         page: Page,
-    ) -> Result<UnmapResult, MapperError> {
+    ) -> Result<
+        UnmapResult,
+        MapperError,
+    > {
         let entry =
             self.find_pte(page)?;
 
@@ -696,12 +877,14 @@ impl Mapper {
             page.start_address()
         );
 
-        Ok(UnmapResult { frame })
+        Ok(
+            UnmapResult {
+                frame,
+            }
+        )
     }
 
     /// Translate a virtual address to a physical address.
-    ///
-    /// Returns `None` if the address is unmapped.
     pub fn translate(
         &self,
         address: VirtAddr,
@@ -721,9 +904,10 @@ impl Mapper {
             address.as_u64()
                 & (FRAME_SIZE - 1);
 
-        let pml4 = unsafe {
-            self.pml4()
-        };
+        let pml4 =
+            unsafe {
+                self.pml4()
+            };
 
         let pml4_entry =
             pml4.entry(
@@ -737,11 +921,12 @@ impl Mapper {
         let pdpt_frame =
             pml4_entry.frame()?;
 
-        let pdpt = unsafe {
-            self.table_from_frame(
-                pdpt_frame
-            )
-        };
+        let pdpt =
+            unsafe {
+                self.table_from_frame(
+                    pdpt_frame
+                )
+            };
 
         let pdpt_entry =
             pdpt.entry(
@@ -752,10 +937,11 @@ impl Mapper {
             return None;
         }
 
-        // 1 GiB pages are intentionally not implemented yet.
         if pdpt_entry
             .flags()
-            .contains(PageTableFlags::HUGE_PAGE)
+            .contains(
+                PageTableFlags::HUGE_PAGE
+            )
         {
             return None;
         }
@@ -763,11 +949,12 @@ impl Mapper {
         let pd_frame =
             pdpt_entry.frame()?;
 
-        let pd = unsafe {
-            self.table_from_frame(
-                pd_frame
-            )
-        };
+        let pd =
+            unsafe {
+                self.table_from_frame(
+                    pd_frame
+                )
+            };
 
         let pd_entry =
             pd.entry(
@@ -778,10 +965,11 @@ impl Mapper {
             return None;
         }
 
-        // 2 MiB pages are intentionally not implemented yet.
         if pd_entry
             .flags()
-            .contains(PageTableFlags::HUGE_PAGE)
+            .contains(
+                PageTableFlags::HUGE_PAGE
+            )
         {
             return None;
         }
@@ -789,11 +977,12 @@ impl Mapper {
         let pt_frame =
             pd_entry.frame()?;
 
-        let pt = unsafe {
-            self.table_from_frame(
-                pt_frame
-            )
-        };
+        let pt =
+            unsafe {
+                self.table_from_frame(
+                    pt_frame
+                )
+            };
 
         let pte =
             pt.entry(
@@ -805,14 +994,14 @@ impl Mapper {
 
         Some(
             PhysAddr::new(
-                frame.start_address()
+                frame
+                    .start_address()
                     .as_u64()
                     + offset
             )
         )
     }
 
-    /// Translate a virtual page to its physical frame.
     pub fn translate_page(
         &self,
         page: Page,
@@ -831,7 +1020,7 @@ impl Mapper {
     }
 }
 
-/// Read CR3 and return the physical frame containing the active PML4.
+/// Read CR3.
 pub fn read_cr3() -> PhysFrame {
     let value: u64;
 
@@ -848,7 +1037,8 @@ pub fn read_cr3() -> PhysFrame {
     }
 
     let address =
-        value & 0x000f_ffff_ffff_f000;
+        value
+            & 0x000f_ffff_ffff_f000;
 
     PhysFrame::from_start_address(
         PhysAddr::new(address)
@@ -858,19 +1048,18 @@ pub fn read_cr3() -> PhysFrame {
     )
 }
 
-/// Check whether an x86-64 virtual address is canonical.
-///
-/// This assumes a 48-bit virtual address space.
-pub const fn is_canonical(
-    address: u64,
-) -> bool {
-    let upper =
-        address >> 48;
+/// Check whether an x86-64 address is canonical.
+pub fn is_canonical(address: u64) -> bool {
+    let bit_47 = (address >> 47) & 1;
+    let upper = address >> 48;
 
-    upper == 0 || upper == 0xffff
+    if bit_47 == 0 {
+        upper == 0
+    } else {
+        upper == 0xffff
+    }
 }
 
-/// Invalidate a single TLB entry.
 #[inline]
 fn flush_tlb(
     address: VirtAddr,
