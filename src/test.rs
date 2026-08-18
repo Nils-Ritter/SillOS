@@ -17,8 +17,10 @@ impl TestResult {
 // Test registration
 // ============================================================
 
+#[allow(unused)]
 pub type TestFn = fn() -> TestResult;
 
+#[allow(unused)]
 #[repr(C)]
 pub struct Test {
     pub name: &'static str,
@@ -49,6 +51,7 @@ unsafe extern "C" {
 // Run all tests
 // ============================================================
 
+#[allow(unused)]
 pub fn run() -> ! {
     serial_println!();
     serial_println!("========================================");
@@ -120,7 +123,7 @@ pub fn run() -> ! {
 // QEMU exit
 // ============================================================
 
-fn exit_qemu(success: bool) -> ! {
+pub fn exit_qemu(success: bool) -> ! {
     //
     // QEMU's isa-debug-exit device listens on port 0xf4.
     //

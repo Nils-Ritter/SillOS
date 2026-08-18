@@ -42,6 +42,7 @@ struct SdtHeader {
     creator_revision: u32,
 }
 
+#[allow(unused)]
 #[repr(C, packed)]
 #[derive(Clone, Copy)]
 struct GenericAddress {
@@ -165,7 +166,7 @@ pub fn init() {
 unsafe fn checksum_valid(
     address: *const u8,
     length: usize,
-) -> bool {
+) -> bool { unsafe {
     let mut sum: u8 = 0;
 
     for i in 0..length {
@@ -175,13 +176,13 @@ unsafe fn checksum_valid(
     }
 
     sum == 0
-}
+}}
 
 // ============================================================
 // Find FADT in XSDT
 // ============================================================
 
-unsafe fn find_fadt(xsdt_address: u64) {
+unsafe fn find_fadt(xsdt_address: u64) { unsafe {
     let xsdt =
         xsdt_address as *const SdtHeader;
 
@@ -258,7 +259,7 @@ unsafe fn find_fadt(xsdt_address: u64) {
     crate::serial_println!(
         "ACPI: FADT not found"
     );
-}
+}}
 
 // ============================================================
 // Parse FADT
@@ -283,7 +284,7 @@ unsafe fn find_fadt(xsdt_address: u64) {
 
 unsafe fn parse_fadt(
     address: u64,
-) {
+) { unsafe {
     let base =
         address as *const u8;
 
@@ -411,18 +412,16 @@ unsafe fn parse_fadt(
         return;
     }
 
-    unsafe {
-        RESET_INFO = Some(ResetInfo {
-            address_space,
-            address: reset_address,
-            value: reset_value,
-        });
-    }
+    RESET_INFO = Some(ResetInfo {
+        address_space,
+        address: reset_address,
+        value: reset_value,
+    });
 
     crate::serial_println!(
         "ACPI: reset mechanism available"
     );
-}
+}}
 
 // ============================================================
 // Reboot
@@ -431,6 +430,7 @@ unsafe fn parse_fadt(
 /// Reboot the machine using the ACPI reset register.
 ///
 /// This function should never return.
+#[allow(unused)]
 pub fn reboot() -> ! {
     crate::serial_println!(
         "ACPI: rebooting..."
@@ -497,6 +497,7 @@ pub fn reboot() -> ! {
 // Fallback reboot
 // ============================================================
 
+#[allow(unused)]
 fn fallback_reboot() -> ! {
     crate::serial_println!(
         "ACPI: attempting fallback reboot..."
@@ -556,12 +557,14 @@ fn fallback_reboot() -> ! {
     }
 }
 
+#[allow(unused)]
 #[repr(C, packed)]
 struct InvalidIdt {
     limit: u16,
     base: u64,
 }
 
+#[allow(unused)]
 static INVALID_IDT: InvalidIdt = InvalidIdt {
     limit: 0,
     base: 0,

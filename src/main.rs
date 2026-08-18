@@ -1,15 +1,21 @@
 #![no_std]
 #![no_main]
 #![feature(abi_x86_interrupt)]
+#![feature(const_try)]
+#![feature(const_option_ops)]
+
 
 mod fb;
 mod acpi;
 mod font;
 mod serial;
 mod test;
+pub mod memory;
+mod kmem;
 pub mod int;
 pub mod gdt;
 mod pic;
+mod console;
 
 #[cfg(feature = "test")]
 #[path = "../tests/trivial_assert.rs"]
@@ -19,7 +25,7 @@ mod trivial_assert_test;
 #[path = "../tests/interrupts.rs"]
 mod interrupts_test;
 
-use crate::acpi::reboot;
+use crate::memory::frame_alloc::FrameAllocator;
 pub use crate::test::{TestResult, test};
 
 extern crate sillos_test_macro;
@@ -60,8 +66,6 @@ pub extern "C" fn kmain() -> ! {
 
     #[cfg(not(feature = "test"))]
     {
-        use crate::acpi::reboot;
-
         unsafe { TESTING = false; }
         kernel();
     }
@@ -116,6 +120,27 @@ fn kernel() {
     fb::init();
     fb::clear(fb::Color::BLACK);
     fb::draw_rect(100, 100, 300, 200, fb::Color::RED);
+
+    let mut kmem = kmem::init();
+    let a = kmem
+        .frames
+        .allocate()
+        .expect("out of physical memory");
+
+    let b = kmem
+        .frames
+        .allocate()
+        .expect("out of physical memory");
+
+    crate::serial_println!("allocated {:?}", a);
+    crate::serial_println!("allocated {:?}", b);
+
+    kmem.frames
+        .deallocate(a)
+        .expect("failed to free frame");
+
+    #[cfg(debug_assertions)]
+    kmem.frames.verify();
 
     serial_println!("4: draw_rect returned");
 

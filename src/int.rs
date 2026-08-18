@@ -9,7 +9,7 @@ use x86_64::{
     },
 };
 
-use crate::gdt;
+use crate::{gdt, test::exit_qemu};
 use crate::pic;
 
 static IDT: Once<InterruptDescriptorTable> = Once::new();
@@ -383,7 +383,7 @@ extern "x86-interrupt" fn machine_check_handler(
 extern "x86-interrupt" fn timer_interrupt_handler(
     _stack_frame: InterruptStackFrame,
 ) {
-    crate::serial_println!("IRQ0: timer");
+    //crate::serial_println!("IRQ0: timer");
 
     pic::end_of_interrupt(
         InterruptIndex::Timer.as_u8()
@@ -399,6 +399,11 @@ extern "x86-interrupt" fn keyboard_interrupt_handler(
     let scancode: u8 = unsafe {
         port.read()
     };
+
+    // Exit qemu when esc is pressed
+    if scancode == 0x81 {
+        exit_qemu(true);
+    }
 
     crate::serial_println!(
         "IRQ1: keyboard scancode = {:#04x}",

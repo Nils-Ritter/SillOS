@@ -119,7 +119,15 @@ run: $(ISO)
 		-cdrom $(ISO) \
 		-serial stdio \
 		-device isa-debug-exit,iobase=0xf4,iosize=0x04; \
-
+	status=$$?; \
+	if [ $$status -eq 33 ]; then \
+		exit 0; \
+	elif [ $$status -eq 35 ]; then \
+		exit 1; \
+	else \
+		echo "QEMU exited unexpectedly with code $$status"; \
+		exit 1; \
+	fi
 
 # ============================================================
 # Tests
