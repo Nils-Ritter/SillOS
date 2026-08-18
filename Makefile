@@ -82,6 +82,7 @@ test: $(TEST_ISO)
 clean:
 	cargo clean
 	rm -rf iso_root $(ISO)
+	rm -rf iso_root $(TEST_ISO)
 	rm -rf $(LIMINE)
 
 cleaniso:
