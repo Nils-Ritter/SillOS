@@ -1,4 +1,5 @@
 /target
-/isoroot
+/iso_root
+/limine
 sillos.iso
 sillos_tests.iso
