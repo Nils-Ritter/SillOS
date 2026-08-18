@@ -15,15 +15,14 @@ jobs:
 
       - name: Install dependencies
         run: |
-          sudo apt-get update
-          sudo apt-get install -y \
+          sudo apt-get install \
             build-essential \
             nasm \
             xorriso \
             qemu-system-x86
 
       - name: Install Rust
-        uses: dtolnay/rust-toolchain@stable
+        uses: dtolnay/rust-toolchain@nightly
         with:
           targets: x86_64-unknown-none
           components: rustfmt
@@ -41,17 +40,49 @@ jobs:
 
       - name: Install dependencies
         run: |
-          sudo apt-get update
-          sudo apt-get install -y \
+          sudo apt-get install \
             build-essential \
             nasm \
             xorriso \
             qemu-system-x86
 
       - name: Install Rust
-        uses: dtolnay/rust-toolchain@stable
+        uses: dtolnay/rust-toolchain@nightly
         with:
           targets: x86_64-unknown-none
 
       - name: Run kernel tests
         run: make test
+
+  release:
+    name: Release ISO
+    needs:
+      - build
+      - test
+    if: github.event_name == 'push' && github.ref_type == 'tag'
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Install dependencies
+        run: |
+          sudo apt-get install \
+            build-essential \
+            nasm \
+            xorriso
+
+      - name: Install Rust
+        uses: dtolnay/rust-toolchain@nightly
+        with:
+          targets: x86_64-unknown-none
+
+      - name: Build ISO
+        run: make
+
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v3
+        with:
+          files: sillos.iso
+          generate_release_notes: true
