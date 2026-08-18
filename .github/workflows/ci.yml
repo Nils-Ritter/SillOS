@@ -16,7 +16,6 @@ jobs:
       - name: Install dependencies
         run: |
           sudo apt-get install \
-            build-essential \
             nasm \
             xorriso \
             qemu-system-x86
@@ -41,7 +40,6 @@ jobs:
       - name: Install dependencies
         run: |
           sudo apt-get install \
-            build-essential \
             nasm \
             xorriso \
             qemu-system-x86
@@ -70,7 +68,6 @@ jobs:
       - name: Install dependencies
         run: |
           sudo apt-get install \
-            build-essential \
             nasm \
             xorriso
 
