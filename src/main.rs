@@ -1,63 +1,60 @@
 #![no_std]
 #![no_main]
 
-use core::panic::PanicInfo;
+mod fb;
+mod serial;
+mod font;
+
+use core::{mem::forget, panic::PanicInfo};
+
+pub const DEBUG_TOGGLE: bool = true;
 
 use limine::{
     RequestsEndMarker,
     RequestsStartMarker,
 };
 
-use limine::request::FramebufferRequest;
-
 #[used]
 #[unsafe(link_section = ".limine_req_start")]
-static REQUESTS_START_MARKER: RequestsStartMarker = RequestsStartMarker::new();
-
-#[used]
-#[unsafe(link_section = ".limine_reqs")]
-static FRAMEBUFFER_REQUEST: FramebufferRequest = FramebufferRequest::new();
+static REQUESTS_START_MARKER: RequestsStartMarker =
+    RequestsStartMarker::new();
 
 #[used]
 #[unsafe(link_section = ".limine_req_end")]
-static REQUESTS_END_MARKER: RequestsEndMarker = RequestsEndMarker::new();
+static REQUESTS_END_MARKER: RequestsEndMarker =
+    RequestsEndMarker::new();
 
 #[unsafe(no_mangle)]
 #[unsafe(link_section = ".text.entry")]
 pub extern "C" fn kmain() -> ! {
-    let framebuffer_response = FRAMEBUFFER_REQUEST
-        .response()
-        .expect("Limine did not provide a framebuffer");
+    serial_println!("1: entered kmain");
 
-    let framebuffer = framebuffer_response
-        .framebuffers()
-        .first()
-        .expect("No framebuffer available");
+    fb::init();
 
-    let width = framebuffer.width as usize;
-    let height = framebuffer.height as usize;
-    let pitch = framebuffer.pitch as usize;
+    serial_println!("2: fb::init() returned");
 
-    let address = framebuffer.address();
-    let buffer = address as *mut u32;
+    fb::clear(fb::Color::BLACK);
 
-    for y in 0..height {
-        for x in 0..width {
-            let r = (x * 255 / width) as u32;
-            let g = (y * 255 / height) as u32;
-            let b = 80u32;
+    serial_println!("3: clear returned");
 
-            let color = (r << 16) | (g << 8) | b;
+    fb::draw_rect(
+        100,
+        100,
+        300,
+        200,
+        fb::Color::RED,
+    );
 
-            let offset = y * (pitch / 4) + x;
+    serial_println!("4: draw_rect returned");
 
-            unsafe {
-                buffer.add(offset).write_volatile(color);
-            }
-        }
-    }
+    let font = font::spleen();
 
-    panic!();
+    font.draw_text(0, 0, "Hello from SillOS", fb::Color::GREEN);
+
+    fb::present();
+
+
+    serial_println!("5: present returned");
 
     loop {
         core::hint::spin_loop();
