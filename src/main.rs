@@ -15,6 +15,7 @@ pub mod int;
 pub mod gdt;
 mod pic;
 mod console;
+mod shell;
 
 #[cfg(feature = "test")]
 #[path = "../tests/trivial_assert.rs"]
@@ -97,15 +98,24 @@ fn kinit(){
     x86_64::instructions::interrupts::enable();
     serial_println!("Interrupts enabled.");
 
-    serial_println!("Initializing ACPI...");
+    serial_println!("initializing acpi...");
     acpi::init();
-    serial_println!("ACPI initialized.");
+    serial_println!("acpi initialized.");
 
     serial_println!("Calling int3...");
     unsafe {
         core::arch::asm!("int3");
     }
     serial_println!("Returned from int3.");
+
+    serial_println!("initializing framebuf...");
+    fb::init();
+    fb::clear(fb::Color::BLACK);
+    serial_println!("framebuf initialized.");
+
+    serial_println!("initializing console...");
+    console::init();
+    serial_println!("console initialized.");
 
     serial_println!();
     serial_println!("Kernel is running.");
@@ -115,19 +125,14 @@ fn kinit(){
 }
 
 fn kernel() {
-    fb::init();
-    fb::clear(fb::Color::BLACK);
-    fb::draw_rect(100, 100, 300, 200, fb::Color::RED);
-
-    serial_println!("4: draw_rect returned");
+    console_println!("Hello from SillOS!");
+    console_println!("Framebuffer: {}x{}", fb::width(), fb::height());
+    console_print!("> ");
 
     let font = font::spleen();
-
     font.draw_text(0, 0, "Hello from SillOS", fb::Color::GREEN);
-
+    fb::draw_rect(100, 100, 300, 200, fb::Color::RED);
     fb::present();
-
-    serial_println!("5: present returned");
 }
 
 #[panic_handler]
