@@ -6,6 +6,12 @@ mod serial;
 mod test;
 mod font;
 
+#[cfg(feature = "test")]
+#[path = "../tests/trivial_assert.rs"]
+mod trivial_assert;
+
+pub use crate::test::{test, TestResult};
+
 extern crate sillos_test_macro;
 
 #[cfg(feature = "test")]
@@ -77,13 +83,13 @@ fn kernel(){
 
     fb::present();
 
-
     serial_println!("5: present returned");
 
 }
 
 #[panic_handler]
-fn panic(_info: &PanicInfo) -> ! {
+fn panic(info: &PanicInfo) -> ! {
+    serial_println!("KERNEL PANIC: {}", info);
     loop {
         core::hint::spin_loop();
     }

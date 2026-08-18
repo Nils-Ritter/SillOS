@@ -1,34 +1,63 @@
 KERNEL := target/x86_64-unknown-none/debug/sillos
+
 ISO := sillos.iso
 TEST_ISO := sillos_tests.iso
-LIMINE := limine/limine
-LIMINE_DIR := limine
 
-.PHONY: all clean run limine kernel
+LIMINE_DIR := limine
+LIMINE := $(LIMINE_DIR)/limine
+
+LIMINE_REPO := https://github.com/limine-bootloader/limine.git
+LIMINE_BRANCH := v9.x-binary
+
+.PHONY: all clean run test kernel kernel-tests limine cleaniso
 
 all: $(ISO)
 
+
+# ============================================================
+# Limine
+# ============================================================
+
 $(LIMINE):
+	@if [ ! -d "$(LIMINE_DIR)" ]; then \
+		echo "Limine directory not found. Cloning Limine..."; \
+		git clone --branch $(LIMINE_BRANCH) --depth 1 $(LIMINE_REPO) $(LIMINE_DIR); \
+	fi
 	$(MAKE) -C $(LIMINE_DIR)
+
+
+limine: $(LIMINE)
+
+
+# ============================================================
+# Kernel
+# ============================================================
 
 kernel:
 	cargo build
 
+
 kernel-tests:
 	cargo build --features test
 
+
+# ============================================================
+# Normal ISO
+# ============================================================
+
 $(ISO): kernel $(LIMINE)
 	rm -rf iso_root
+
 	mkdir -p iso_root/boot
 	mkdir -p iso_root/EFI/BOOT
 
 	cp $(KERNEL) iso_root/boot/sillos
 	cp limine.conf iso_root/limine.conf
 
-	cp limine/limine-bios-cd.bin iso_root/boot/
-	cp limine/limine-uefi-cd.bin iso_root/boot/
-	cp limine/BOOTX64.EFI iso_root/EFI/BOOT/
-	cp limine/limine-bios.sys iso_root/boot/
+	cp $(LIMINE_DIR)/limine-bios-cd.bin iso_root/boot/
+	cp $(LIMINE_DIR)/limine-uefi-cd.bin iso_root/boot/
+	cp $(LIMINE_DIR)/BOOTX64.EFI iso_root/EFI/BOOT/
+	cp $(LIMINE_DIR)/limine-bios.sys iso_root/boot/
 
 	xorriso -as mkisofs \
 		-R -r -J \
@@ -45,18 +74,24 @@ $(ISO): kernel $(LIMINE)
 
 	$(LIMINE) bios-install $(ISO)
 
+
+# ============================================================
+# Test ISO
+# ============================================================
+
 $(TEST_ISO): kernel-tests $(LIMINE)
 	rm -rf iso_root
+
 	mkdir -p iso_root/boot
 	mkdir -p iso_root/EFI/BOOT
 
 	cp $(KERNEL) iso_root/boot/sillos
 	cp limine.conf iso_root/limine.conf
 
-	cp limine/limine-bios-cd.bin iso_root/boot/
-	cp limine/limine-uefi-cd.bin iso_root/boot/
-	cp limine/BOOTX64.EFI iso_root/EFI/BOOT/
-	cp limine/limine-bios.sys iso_root/boot/
+	cp $(LIMINE_DIR)/limine-bios-cd.bin iso_root/boot/
+	cp $(LIMINE_DIR)/limine-uefi-cd.bin iso_root/boot/
+	cp $(LIMINE_DIR)/BOOTX64.EFI iso_root/EFI/BOOT/
+	cp $(LIMINE_DIR)/limine-bios.sys iso_root/boot/
 
 	xorriso -as mkisofs \
 		-R -r -J \
@@ -73,19 +108,56 @@ $(TEST_ISO): kernel-tests $(LIMINE)
 
 	$(LIMINE) bios-install $(TEST_ISO)
 
+
+# ============================================================
+# Run
+# ============================================================
+
 run: $(ISO)
-	qemu-system-x86_64 -cdrom $(ISO) -m 256M
+	@printf '\033[2J\033[H'
+	@qemu-system-x86_64 \
+		-cdrom $(ISO) \
+		-serial stdio \
+		-device isa-debug-exit,iobase=0xf4,iosize=0x04; \
+
+
+# ============================================================
+# Tests
+# ============================================================
 
 test: $(TEST_ISO)
-	qemu-system-x86_64 -cdrom $(TEST_ISO) -m 256M -display none -serial stdio -device isa-debug-exit,iobase=0xf4,iosize=0x04
+	@printf '\033[2J\033[H'
+	@qemu-system-x86_64 \
+		-cdrom $(TEST_ISO) \
+		-m 256M \
+		-display none \
+		-serial stdio \
+		-monitor none \
+		-device isa-debug-exit,iobase=0xf4,iosize=0x04; \
+	status=$$?; \
+	if [ $$status -eq 33 ]; then \
+		exit 0; \
+	elif [ $$status -eq 35 ]; then \
+		exit 1; \
+	else \
+		echo "QEMU exited unexpectedly with code $$status"; \
+		exit 1; \
+	fi
+
+
+# ============================================================
+# Clean
+# ============================================================
 
 clean:
 	cargo clean
-	rm -rf iso_root $(ISO)
-	rm -rf iso_root $(TEST_ISO)
-	rm -rf $(LIMINE)
+	rm -rf iso_root
+	rm -f $(ISO)
+	rm -f $(TEST_ISO)
+	rm -rf $(LIMINE_DIR)
+
 
 cleaniso:
-	rm -rf iso_root $(ISO)
-
-limine: $(LIMINE)
+	rm -rf iso_root
+	rm -f $(ISO)
+	rm -f $(TEST_ISO)
