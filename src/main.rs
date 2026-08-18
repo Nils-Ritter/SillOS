@@ -126,8 +126,6 @@ fn kernel() {
     fb::present();
 
     serial_println!("5: present returned");
-
-    serial_println!("REBOOTING VIA ACPI");
 }
 
 #[panic_handler]
