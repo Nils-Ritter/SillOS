@@ -1,5 +1,5 @@
 /target
-isoroot/
+isoroot/*
 sillos.iso
 sillos_tests.iso
 
