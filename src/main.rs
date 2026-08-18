@@ -22,10 +22,14 @@ mod console;
 mod trivial_assert_test;
 
 #[cfg(feature = "test")]
+#[path = "../tests/kmem_tests.rs"]
+mod kmem_tests;
+
+#[cfg(feature = "test")]
 #[path = "../tests/interrupts.rs"]
 mod interrupts_test;
 
-use crate::memory::frame_alloc::FrameAllocator;
+use crate::memory::{frame_alloc::FrameAllocator, page_alloc::{Page, VirtAddr}, page_table::{Mapper, PageTableFlags}};
 pub use crate::test::{TestResult, test};
 
 extern crate sillos_test_macro;
@@ -122,24 +126,77 @@ fn kernel() {
     fb::draw_rect(100, 100, 300, 200, fb::Color::RED);
 
     let mut kmem = kmem::init();
-    let a = kmem
+    let mapper = unsafe {
+        Mapper::new(
+            kmem.pml4_frame,
+            kmem.hhdm_offset,
+        )
+    };
+
+    let frame_a = kmem
         .frames
         .allocate()
-        .expect("out of physical memory");
+        .expect("failed to allocate frame");
 
-    let b = kmem
+    let frame_b = kmem
         .frames
         .allocate()
-        .expect("out of physical memory");
+        .expect("failed to allocate frame");
 
-    crate::serial_println!("allocated {:?}", a);
-    crate::serial_println!("allocated {:?}", b);
+    let page_a = Page::containing_address(
+        VirtAddr::new(0xffff_9000_0000_0000)
+    );
+
+    let page_b = Page::containing_address(
+        VirtAddr::new(0xffff_9000_0000_1000)
+    );
+
+    mapper
+        .map(
+            page_a,
+            frame_a,
+            PageTableFlags::WRITABLE
+                | PageTableFlags::NO_EXECUTE,
+            &mut kmem.frames,
+        )
+        .expect("failed to map page A");
+
+    mapper
+        .map(
+            page_b,
+            frame_b,
+            PageTableFlags::WRITABLE
+                | PageTableFlags::NO_EXECUTE,
+            &mut kmem.frames,
+        )
+        .expect("failed to map page B");
+
+    assert_eq!(
+        mapper.translate_page(page_a),
+        Some(frame_a)
+    );
+
+    assert_eq!(
+        mapper.translate_page(page_b),
+        Some(frame_b)
+    );
+
+    let result = mapper
+        .unmap(page_a)
+        .expect("failed to unmap page A");
 
     kmem.frames
-        .deallocate(a)
-        .expect("failed to free frame");
+        .deallocate(result.frame)
+        .expect("failed to free frame A");
 
-    #[cfg(debug_assertions)]
+    let result = mapper
+        .unmap(page_b)
+        .expect("failed to unmap page B");
+
+    kmem.frames
+        .deallocate(result.frame)
+        .expect("failed to free frame B");
+
     kmem.frames.verify();
 
     serial_println!("4: draw_rect returned");

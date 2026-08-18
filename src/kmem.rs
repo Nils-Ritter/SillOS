@@ -1,5 +1,6 @@
-use crate::memory::frame_alloc::BitmapFrameAllocator;
+use crate::memory::{self, frame_alloc::BitmapFrameAllocator, page_table::read_cr3};
 use limine::request::{HhdmRequest, MemmapRequest};
+use memory::frame_alloc::{PhysFrame};
 
 #[used]
 #[unsafe(link_section = ".limine_reqs")]
@@ -16,8 +17,11 @@ pub static MEMORY_MAP_REQUEST: MemmapRequest =
 /// This currently owns the physical frame allocator. As the memory
 /// subsystem grows, this can become the owner of the page-table mapper,
 /// kernel address-space manager, heap, etc.
+
 pub struct KernelMemory {
     pub frames: BitmapFrameAllocator,
+    pub hhdm_offset: u64,
+    pub pml4_frame: PhysFrame,
 }
 
 /// Initialize the kernel memory subsystem.
@@ -44,21 +48,30 @@ pub fn init() -> KernelMemory {
         .expect("failed to initialize physical frame allocator")
     };
 
+    let pml4_frame = read_cr3();
+
     let stats = frames.stats();
 
     crate::serial_println!(
-        "physical memory: {} frames total, {} free",
+        "physical memory: {} total frames, {} free",
         stats.total_frames,
         stats.free_frames,
     );
 
     crate::serial_println!(
-        "frame bitmap: {:#x} ({:#x} bytes)",
-        stats.bitmap_start.as_u64(),
+        "frame bitmap: {:?}, {} bytes",
+        stats.bitmap_start,
         stats.bitmap_size,
+    );
+
+    crate::serial_println!(
+        "PML4: {:?}",
+        pml4_frame,
     );
 
     KernelMemory {
         frames,
+        hhdm_offset: hhdm.offset,
+        pml4_frame,
     }
 }
