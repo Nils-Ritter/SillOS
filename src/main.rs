@@ -1,14 +1,22 @@
 #![no_std]
 #![no_main]
+#![feature(abi_x86_interrupt)]
 
 mod fb;
 mod font;
 mod serial;
 mod test;
+pub mod int;
+pub mod gdt;
+mod pic;
 
 #[cfg(feature = "test")]
 #[path = "../tests/trivial_assert.rs"]
-mod trivial_assert;
+mod trivial_assert_test;
+
+#[cfg(feature = "test")]
+#[path = "../tests/interrupts.rs"]
+mod interrupts_test;
 
 pub use crate::test::{TestResult, test};
 
@@ -20,6 +28,7 @@ mod unit_tests;
 use core::panic::PanicInfo;
 
 pub const DEBUG_TOGGLE: bool = true;
+pub static mut TESTING: bool = false;
 
 use limine::{RequestsEndMarker, RequestsStartMarker};
 
@@ -35,33 +44,65 @@ static REQUESTS_END_MARKER: RequestsEndMarker = RequestsEndMarker::new();
 #[unsafe(link_section = ".text.entry")]
 pub extern "C" fn kmain() -> ! {
     serial_println!("SillOS starting.");
+    kinit();
 
     #[cfg(feature = "test")]
     {
+        unsafe { TESTING = true; }
         test::run();
     }
 
     #[cfg(not(feature = "test"))]
     {
-        kernel();
+        unsafe { TESTING = false; }
+        //kernel();
     }
 
     loop {
-        core::hint::spin_loop();
+        x86_64::instructions::hlt();
     }
 }
 
+static mut KINIT_CALLED: bool = false;
+
+fn kinit(){
+    unsafe {
+        if KINIT_CALLED { panic!("KINIT CANNOT BE CALLED MORE THAN ONCE"); }
+        KINIT_CALLED = true;
+    }
+    
+    serial_println!("Initializing GDT...");
+    gdt::init();
+    serial_println!("GDT initialized.");
+
+    serial_println!("Initializing IDT...");
+    int::init();
+    serial_println!("IDT initialized.");
+
+    serial_println!("Initializing PIC...");
+    pic::init();
+    serial_println!("PIC initialized.");
+
+    serial_println!("Enabling interrupts...");
+    x86_64::instructions::interrupts::enable();
+    serial_println!("Interrupts enabled.");
+
+    serial_println!("Calling int3...");
+    unsafe {
+        core::arch::asm!("int3");
+    }
+    serial_println!("Returned from int3.");
+
+    serial_println!();
+    serial_println!("Kernel is running.");
+    serial_println!("Timer interrupts should now arrive.");
+    serial_println!("Press keys to test keyboard IRQs.");
+    serial_println!();
+}
+
 fn kernel() {
-    serial_println!("1: entered kernel");
-
     fb::init();
-
-    serial_println!("2: fb::init() returned");
-
     fb::clear(fb::Color::BLACK);
-
-    serial_println!("3: clear returned");
-
     fb::draw_rect(100, 100, 300, 200, fb::Color::RED);
 
     serial_println!("4: draw_rect returned");
