@@ -3,9 +3,15 @@
 
 mod fb;
 mod serial;
+mod test;
 mod font;
 
-use core::{mem::forget, panic::PanicInfo};
+extern crate sillos_test_macro;
+
+#[cfg(feature = "test")]
+mod unit_tests;
+
+use core::panic::PanicInfo;
 
 pub const DEBUG_TOGGLE: bool = true;
 
@@ -27,7 +33,25 @@ static REQUESTS_END_MARKER: RequestsEndMarker =
 #[unsafe(no_mangle)]
 #[unsafe(link_section = ".text.entry")]
 pub extern "C" fn kmain() -> ! {
-    serial_println!("1: entered kmain");
+    serial_println!("SillOS starting.");
+
+    #[cfg(feature = "test")]
+    {
+        test::run();
+    }
+
+    #[cfg(not(feature = "test"))]
+    {
+        kernel();
+    }
+
+    loop {
+        core::hint::spin_loop();
+    }
+}
+
+fn kernel(){
+    serial_println!("1: entered kernel");
 
     fb::init();
 
@@ -56,9 +80,6 @@ pub extern "C" fn kmain() -> ! {
 
     serial_println!("5: present returned");
 
-    loop {
-        core::hint::spin_loop();
-    }
 }
 
 #[panic_handler]
