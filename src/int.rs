@@ -142,6 +142,9 @@ extern "x86-interrupt" fn breakpoint_handler(
     crate::serial_println!();
     crate::serial_println!("EXCEPTION: BREAKPOINT");
     crate::serial_println!("{:#?}", stack_frame);
+    crate::console_println!();
+    crate::console_println!("EXCEPTION: BREAKPOINT");
+    crate::console_println!("{:#?}", stack_frame);
 }
 
 extern "x86-interrupt" fn double_fault_handler(

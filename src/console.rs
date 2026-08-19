@@ -296,11 +296,10 @@ pub fn init() {
         core::ptr::addr_of_mut!(CONSOLE_INITIALIZED)
             .write(true);
     }
-
     with_console(|console| {
         console.clear();
     });
-
+    receive_key('\n');
     fb::present();
 }
 

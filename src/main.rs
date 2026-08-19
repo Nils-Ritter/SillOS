@@ -81,63 +81,62 @@ fn kinit(){
         if KINIT_CALLED { panic!("KINIT CANNOT BE CALLED MORE THAN ONCE"); }
         KINIT_CALLED = true;
     }
+
+    serial_print!("[STARTUP] initializing framebuf...");
+    fb::init();
+    fb::clear(fb::Color::BLACK);
+    serial_println!("[OK]");
+
+    serial_print!("[STARTUP] initializing console...");
+    console::init();
+    serial_println!("[OK]");
     
-    serial_println!("Initializing GDT...");
+    console_print!("[STARTUP] Initializing GDT...");
     gdt::init();
-    serial_println!("GDT initialized.");
+    console_println!("[OK]");
 
-    serial_println!("Initializing IDT...");
+    console_print!("[STARTUP] Initializing IDT...");
     int::init();
-    serial_println!("IDT initialized.");
+    console_println!("[OK]");
 
-    serial_println!("Initializing PIC...");
+    console_print!("[STARTUP] Initializing PIC...");
     pic::init();
-    serial_println!("PIC initialized.");
+    console_println!("[OK]");
 
-    serial_println!("Enabling interrupts...");
+    console_print!("[STARTUP] Enabling interrupts...");
     x86_64::instructions::interrupts::enable();
-    serial_println!("Interrupts enabled.");
+    console_println!("[OK]");
 
-    serial_println!("initializing acpi...");
+    console_print!("[STARTUP] initializing acpi...");
     acpi::init();
-    serial_println!("acpi initialized.");
+    console_println!("[OK]");
 
-    serial_println!("Calling int3...");
+    console_print!("[STARTUP] Calling int3...");
     unsafe {
         core::arch::asm!("int3");
     }
-    serial_println!("Returned from int3.");
+    console_println!("[OK]");
 
-    serial_println!("initializing framebuf...");
-    fb::init();
-    fb::clear(fb::Color::BLACK);
-    serial_println!("framebuf initialized.");
 
-    serial_println!("initializing console...");
-    console::init();
-    serial_println!("console initialized.");
-
-    serial_println!();
-    serial_println!("Kernel is running.");
-    serial_println!("Timer interrupts should now arrive.");
-    serial_println!("Press keys to test keyboard IRQs.");
-    serial_println!();
+    console_println!();
+    console_println!("[INFO] Kernel is running.");
+    console_println!("[INFO] Timer interrupts should now arrive.");
+    console_println!("[INFO] Press keys to test keyboard IRQs.");
+    console_println!();
 }
 
 fn kernel() {
     console_println!("Hello from SillOS!");
     console_println!("Framebuffer: {}x{}", fb::width(), fb::height());
     console_print!("> ");
-
-    let font = font::spleen();
-    font.draw_text(0, 0, "Hello from SillOS", fb::Color::GREEN);
-    fb::draw_rect(100, 100, 300, 200, fb::Color::RED);
     fb::present();
 }
 
 #[panic_handler]
 fn panic(info: &PanicInfo) -> ! {
+    console_println!("KERNEL PANIC: {}", info);
     serial_println!("KERNEL PANIC: {}", info);
+    fb::present();
     loop {
         core::hint::spin_loop();
     }

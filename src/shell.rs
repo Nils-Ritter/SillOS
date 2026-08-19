@@ -13,6 +13,8 @@ pub fn execute(line: &str) {
         "clear" => clear(),
         "echo" => echo(parts),
         "info" => info(),
+        "panic" => panic(),
+        "bp" => bp(),
 
         _ => {
             console_println!("Unknown command: {}", command);
@@ -27,6 +29,8 @@ fn help() {
     console_println!("  clear      - Clear the screen");
     console_println!("  echo       - Print text");
     console_println!("  info       - Show system information");
+    console_println!("  panic      - Intentionally throws a kernel panic");
+    console_println!("  bp         - Sets and steps over a breakpoint");
 }
 
 fn clear() {
@@ -52,4 +56,12 @@ fn info() {
     console_println!("SillOS");
     console_println!("Architecture: x86_64");
     console_println!("Bootloader: Limine");
+}
+
+fn panic(){
+    panic!("Intentional debug panic");
+}
+
+fn bp(){
+    x86_64::instructions::interrupts::int3();
 }
