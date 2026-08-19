@@ -117,7 +117,6 @@ fn kinit(){
     }
     console_println!("[OK]");
 
-
     console_println!();
     console_println!("[INFO] Kernel is running.");
     console_println!("[INFO] Timer interrupts should now arrive.");
