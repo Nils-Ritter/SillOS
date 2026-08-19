@@ -1,5 +1,5 @@
 <p align="left">
-  <img src="logo.png" alt="Logo" width="2000">
+  <img src="logo.png" alt="Logo" width="200">
 </p>
 
 # SillOS
