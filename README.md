@@ -1,3 +1,7 @@
+<p align="left">
+  <img src="logo.png" alt="Logo" width="200">
+</p>
+
 # SillOS
 
 SillOS is a small hobby operating system for x86_64, written in Rust.
