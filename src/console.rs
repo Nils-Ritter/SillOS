@@ -1,3 +1,235 @@
+#[cfg(feature = "test")]
+mod tests {
+    use crate::test::{test, TestResult};
+
+    use super::Console;
+
+    fn pass() -> TestResult {
+        TestResult::Pass
+    }
+
+    #[test]
+    fn console_initializes_cursor_and_input_state() -> TestResult {
+        let console = Console::new(800, 480);
+
+        if console.cursor_x != 0 {
+            return TestResult::Fail("cursor_x is not initialized to zero");
+        }
+
+        if console.cursor_y != 0 {
+            return TestResult::Fail("cursor_y is not initialized to zero");
+        }
+
+        if console.columns != 100 {
+            return TestResult::Fail("console column count is incorrect");
+        }
+
+        if console.rows != 30 {
+            return TestResult::Fail("console row count is incorrect");
+        }
+
+        if console.input_len != 0 {
+            return TestResult::Fail("input buffer is not empty");
+        }
+
+        if console.line_ready {
+            return TestResult::Fail("line_ready is initially set");
+        }
+
+        pass()
+    }
+
+    #[test]
+    fn console_writes_characters() -> TestResult {
+        let mut console = Console::new(80, 32);
+
+        console.write_str("abc");
+
+        if console.cursor_x != 3 {
+            return TestResult::Fail("writing characters does not advance cursor");
+        }
+
+        if console.cursor_y != 0 {
+            return TestResult::Fail("writing characters changed cursor row");
+        }
+
+        pass()
+    }
+
+    #[test]
+    fn console_newline_moves_to_next_row() -> TestResult {
+        let mut console = Console::new(80, 32);
+
+        console.write_str("abc\ndef");
+
+        if console.cursor_x != 3 {
+            return TestResult::Fail("cursor column after newline is incorrect");
+        }
+
+        if console.cursor_y != 1 {
+            return TestResult::Fail("newline did not advance cursor row");
+        }
+
+        pass()
+    }
+
+    #[test]
+    fn console_carriage_return_resets_column() -> TestResult {
+        let mut console = Console::new(80, 32);
+
+        console.write_str("abcdef\rxy");
+
+        if console.cursor_x != 2 {
+            return TestResult::Fail("carriage return did not reset cursor column");
+        }
+
+        if console.cursor_y != 0 {
+            return TestResult::Fail("carriage return changed cursor row");
+        }
+
+        pass()
+    }
+
+    #[test]
+    fn console_tab_advances_to_next_tab_stop() -> TestResult {
+        let mut console = Console::new(80, 32);
+
+        console.write_str("a\t");
+
+        if console.cursor_x != 4 {
+            return TestResult::Fail("tab did not advance to the next tab stop");
+        }
+
+        console.write_str("b\t");
+
+        if console.cursor_x != 8 {
+            return TestResult::Fail("second tab did not advance correctly");
+        }
+
+        pass()
+    }
+
+    #[test]
+    fn console_backspace_moves_cursor_back() -> TestResult {
+        let mut console = Console::new(80, 32);
+
+        console.write_str("abc");
+        console.write_str("\u{8}");
+
+        if console.cursor_x != 2 {
+            return TestResult::Fail("backspace did not move cursor backwards");
+        }
+
+        pass()
+    }
+
+    #[test]
+    fn console_backspace_at_origin_is_safe() -> TestResult {
+        let mut console = Console::new(80, 32);
+
+        console.write_str("\u{8}");
+
+        if console.cursor_x != 0 || console.cursor_y != 0 {
+            return TestResult::Fail("backspace at origin moved the cursor");
+        }
+
+        pass()
+    }
+
+    #[test]
+    fn console_wraps_at_right_edge() -> TestResult {
+        let mut console = Console::new(16, 32);
+
+        console.write_str("ab");
+
+        if console.cursor_x != 0 {
+            return TestResult::Fail("console did not wrap at the right edge");
+        }
+
+        if console.cursor_y != 1 {
+            return TestResult::Fail("console did not advance row after wrapping");
+        }
+
+        pass()
+    }
+
+    #[test]
+    fn console_read_line_returns_none_until_line_is_ready() -> TestResult {
+        let mut console = Console::new(80, 32);
+        let mut buffer = [0u8; 16];
+
+        if console.read_line(&mut buffer).is_some() {
+            return TestResult::Fail("read_line returned a line before Enter");
+        }
+
+        pass()
+    }
+
+    #[test]
+    fn console_read_line_copies_and_consumes_line() -> TestResult {
+        let mut console = Console::new(80, 32);
+
+        console.input[..5].copy_from_slice(b"hello");
+        console.input_len = 5;
+        console.line_ready = true;
+
+        let mut buffer = [0u8; 16];
+
+        let length = match console.read_line(&mut buffer) {
+            Some(length) => length,
+            None => return TestResult::Fail("read_line did not return ready line"),
+        };
+
+        if length != 5 {
+            return TestResult::Fail("read_line returned incorrect length");
+        }
+
+        if &buffer[..5] != b"hello" {
+            return TestResult::Fail("read_line returned incorrect contents");
+        }
+
+        if console.input_len != 0 {
+            return TestResult::Fail("read_line did not consume input");
+        }
+
+        if console.line_ready {
+            return TestResult::Fail("read_line did not clear line_ready");
+        }
+
+        pass()
+    }
+
+    #[test]
+    fn console_read_line_truncates_to_destination() -> TestResult {
+        let mut console = Console::new(80, 32);
+
+        console.input[..6].copy_from_slice(b"abcdef");
+        console.input_len = 6;
+        console.line_ready = true;
+
+        let mut buffer = [0u8; 3];
+
+        let length = match console.read_line(&mut buffer) {
+            Some(length) => length,
+            None => return TestResult::Fail("read_line did not return ready line"),
+        };
+
+        if length != 3 {
+            return TestResult::Fail("read_line did not truncate to buffer size");
+        }
+
+        if &buffer != b"abc" {
+            return TestResult::Fail("truncated line has incorrect contents");
+        }
+
+        if console.input_len != 0 || console.line_ready {
+            return TestResult::Fail("truncated read did not consume the line");
+        }
+
+        pass()
+    }
+}
+
 use core::{ fmt, mem::MaybeUninit, };
 use crate::{
     fb::{self, Color}, font, shell,
