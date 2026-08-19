@@ -1,4 +1,4 @@
-use crate::{acpi, console, console_print, console_println};
+use crate::{acpi, console, console_print, console_println, test::exit_qemu};
 
 pub fn execute(line: &str) {
     let mut parts = line.split_whitespace();
@@ -16,6 +16,9 @@ pub fn execute(line: &str) {
         "panic" => panic(),
         "bp" => bp(),
         "sven" => sven(), //NOTE: Do not add this to help
+        "reboot" => reboot(),
+        "shutdown" => shutdown(),
+
 
         _ => {
             console_println!("Unknown command: {}", command);
@@ -32,6 +35,8 @@ fn help() {
     console_println!("  info       - Show system information");
     console_println!("  panic      - Intentionally throws a kernel panic");
     console_println!("  bp         - Sets and steps over a breakpoint");
+    console_println!("  reboot     - Reboots the machine.");
+    console_println!("  shutdown   - Shuts the computer down.");
 }
 
 fn clear() {
@@ -71,4 +76,14 @@ fn sven(){
     console_println!("This command is dedicated to my friend bunny, sven!");
     console_println!("Say bye bye to your pc :)");
     acpi::reboot();
+}
+
+fn reboot(){
+    acpi::reboot();
+}
+
+fn shutdown(){
+    console_println!("There currently is no support for acpi shutdown.");
+    console_println!("However, qemu will close normally.");
+    exit_qemu(true);
 }
