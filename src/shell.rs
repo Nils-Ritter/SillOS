@@ -1,4 +1,4 @@
-use crate::{console, console_print, console_println};
+use crate::{acpi, console, console_print, console_println};
 
 pub fn execute(line: &str) {
     let mut parts = line.split_whitespace();
@@ -15,6 +15,7 @@ pub fn execute(line: &str) {
         "info" => info(),
         "panic" => panic(),
         "bp" => bp(),
+        "sven" => sven(), //NOTE: Do not add this to help
 
         _ => {
             console_println!("Unknown command: {}", command);
@@ -64,4 +65,10 @@ fn panic(){
 
 fn bp(){
     x86_64::instructions::interrupts::int3();
+}
+
+fn sven(){
+    console_println!("This command is dedicated to my friend bunny, sven!");
+    console_println!("Say bye bye to your pc :)");
+    acpi::reboot();
 }
