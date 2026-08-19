@@ -121,11 +121,11 @@ some standard Rust tooling and libraries are not available inside the kernel.
 
 ## Roadmap
 
-- [ ] Improve serial logging
-- [ ] Add interrupt handling
+- [x] Improve serial logging
+- [x] Add interrupt handling
 - [ ] Add memory management
-- [ ] Add a keyboard driver
-- [ ] Add a basic shell
+- [x] Add a keyboard driver
+- [x] Add a basic shell
 - [ ] Add a simple heap allocator
 - [ ] Improve automated testing
 - [ ] Support additional hardware
