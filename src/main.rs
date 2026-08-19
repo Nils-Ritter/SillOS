@@ -1,9 +1,6 @@
 #![no_std]
 #![no_main]
 #![feature(abi_x86_interrupt)]
-#![feature(const_try)]
-#![feature(const_option_ops)]
-
 
 mod fb;
 mod acpi;

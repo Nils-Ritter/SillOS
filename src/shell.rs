@@ -43,7 +43,7 @@ fn clear() {
     console::clear();
 }
 
-fn echo(mut args: core::str::SplitWhitespace<'_>) {
+fn echo(args: core::str::SplitWhitespace<'_>) {
     let mut first = true;
 
     for arg in args {

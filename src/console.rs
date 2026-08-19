@@ -290,10 +290,12 @@ impl Console {
         self.line_ready = false;
     }
 
+    #[expect(unused)]
     pub fn set_foreground(&mut self, color: Color) {
         self.foreground = color;
     }
 
+    #[expect(unused)]
     pub fn set_background(&mut self, color: Color) {
         self.background = color;
     }

@@ -42,6 +42,7 @@ pub struct Test {
 // We can then iterate over all registered tests.
 //
 
+#[allow(warnings)]
 unsafe extern "C" {
     static __kernel_tests_start: Test;
     static __kernel_tests_end: Test;

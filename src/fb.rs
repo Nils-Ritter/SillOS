@@ -41,6 +41,7 @@ pub struct Color {
     pub b: u8,
 }
 
+#[expect(unused)]
 impl Color {
     pub const BLACK: Color = Color { r: 0, g: 0, b: 0 };
 

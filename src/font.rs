@@ -120,6 +120,7 @@ impl Font {
     // Draw text
     // ========================================================
 
+    #[expect(unused)]
     pub fn draw_text(&self, x: usize, y: usize, text: &str, color: Color) {
         let mut cursor_x = x;
         let mut cursor_y = y;

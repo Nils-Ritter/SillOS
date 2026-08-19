@@ -9,7 +9,7 @@ use x86_64::{
     },
 };
 
-use crate::{console::{self, receive_key}, gdt, test::exit_qemu};
+use crate::{console::{self}, gdt};
 use crate::pic;
 
 static IDT: Once<InterruptDescriptorTable> = Once::new();
