@@ -3,6 +3,7 @@
 #![feature(abi_x86_interrupt)]
 
 mod fb;
+mod fs;
 mod acpi;
 mod font;
 mod serial;
