@@ -87,10 +87,6 @@ pub struct Console {
 // Construction
 // ============================================================
 
-pub fn set_input_allowed(toggle: bool){
-    unsafe { INPUT_ALLOWED = toggle; }
-}
-
 impl Console {
 
     pub fn new(
