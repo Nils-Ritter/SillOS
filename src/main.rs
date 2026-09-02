@@ -23,6 +23,7 @@ mod trivial_assert_test;
 #[path = "../tests/interrupts.rs"]
 mod interrupts_test;
 
+use crate::fb::Color;
 pub use crate::test::{TestResult, test};
 
 extern crate sillos_test_macro;
@@ -91,23 +92,23 @@ fn kinit(){
 
     console_print!("[STARTUP] Initializing GDT...");
     gdt::init();
-    console_println!("[OK]");
+    console_println_color!(Color::GREEN, "[OK]");
 
     console_print!("[STARTUP] Initializing IDT...");
     int::init();
-    console_println!("[OK]");
+    console_println_color!(Color::GREEN, "[OK]");
 
     console_print!("[STARTUP] Initializing PIC...");
     pic::init();
-    console_println!("[OK]");
+    console_println_color!(Color::GREEN, "[OK]");
 
     console_print!("[STARTUP] Enabling interrupts...");
     x86_64::instructions::interrupts::enable();
-    console_println!("[OK]");
+    console_println_color!(Color::GREEN, "[OK]");
 
     console_print!("[STARTUP] initializing acpi...");
     acpi::init();
-    console_println!("[OK]");
+    console_println_color!(Color::GREEN, "[OK]");
 
     console_println!();
     console_println!("[INFO] Kernel is running.");
@@ -117,8 +118,14 @@ fn kinit(){
 }
 
 fn kernel() {
-    console_println!("Hello from SillOS!");
-    console_println!("Framebuffer: {}x{}", fb::width(), fb::height());
+    console::clear();
+    console_println!("Welcome to...");
+    console_println!(r#"  _________.__.__  .__   ________    _________
+ /   _____/|__|  | |  |  \_____  \  /   _____/
+ \_____  \ |  |  | |  |   /   |   \ \_____  \ 
+ /        \|  |  |_|  |__/    |    \/        \
+/_______  /|__|____/____/\_______  /_______  /
+        \/                       \/        \/"#);
     fb::present();
     console_print!("> ");
     fb::present();
@@ -126,7 +133,7 @@ fn kernel() {
 
 #[panic_handler]
 fn panic(info: &PanicInfo) -> ! {
-    console_println!("KERNEL PANIC: {}", info);
+    console_println_color!(Color::RED, "KERNEL PANIC: {}", info);
     serial_println!("KERNEL PANIC: {}", info);
     fb::present();
     loop {

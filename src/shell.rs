@@ -1,4 +1,4 @@
-use crate::{acpi, console::{self, Console, clear, with_console}, console_print, console_println, fb::Color, test::exit_qemu};
+use crate::{acpi, console::{self, Console, clear, with_console}, console_print, console_println, fb::{self, Color}, test::exit_qemu};
 use crate::test::{test, TestResult};
 
 pub fn execute(line: &str) {
@@ -65,6 +65,8 @@ fn info() {
     console_println!("SillOS");
     console_println!("Architecture: x86_64");
     console_println!("Bootloader: Limine");
+    console_println!("Framebuffer: {}x{}", fb::width(), fb::height());
+
 }
 
 fn panic(){

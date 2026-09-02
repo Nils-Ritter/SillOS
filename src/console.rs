@@ -789,6 +789,23 @@ pub fn write_fmt(
     fb::present();
 }
 
+pub fn write_fmt_color(
+    color: Color,
+    args: fmt::Arguments<'_>,
+) {
+    with_console(|console| {
+        let old_color = console.foreground;
+
+        console.foreground = color;
+
+        let _ = write_fmt(args);
+
+        console.foreground = old_color;
+    });
+
+    fb::present();
+}
+
 // ============================================================
 // Keyboard
 // ============================================================
@@ -874,6 +891,36 @@ macro_rules! console_println {
 
     ($($arg:tt)*) => {
         $crate::console::write_fmt(
+            core::format_args!(
+                "{}\n",
+                core::format_args!($($arg)*)
+            )
+        )
+    };
+}
+
+#[macro_export]
+macro_rules! console_print_color {
+    ($color:expr, $($arg:tt)*) => {
+        $crate::console::write_fmt_color(
+            $color,
+            core::format_args!($($arg)*)
+        )
+    };
+}
+
+#[macro_export]
+macro_rules! console_println_color {
+    ($color:expr) => {
+        $crate::console::write_fmt_color(
+            $color,
+            core::format_args!("\n")
+        )
+    };
+
+    ($color:expr, $($arg:tt)*) => {
+        $crate::console::write_fmt_color(
+            $color,
             core::format_args!(
                 "{}\n",
                 core::format_args!($($arg)*)
