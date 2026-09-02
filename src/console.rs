@@ -610,7 +610,7 @@ impl Console {
     // Keyboard
     // ========================================================
     pub fn receive_key(&mut self, key: char) {
-        if unsafe { INPUT_ALLOWED }{
+        if true { //TODO: Remove and indent
             match key {
                 '\n' | '\r' => {
                     self.put_char(b'\n');
