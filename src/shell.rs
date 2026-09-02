@@ -1,4 +1,5 @@
-use crate::{acpi, console::{self, Console, with_console}, console_print, console_println, fb::Color, test::exit_qemu};
+use crate::{acpi, console::{self, Console, clear, with_console}, console_print, console_println, fb::Color, test::exit_qemu};
+use crate::test::{test, TestResult};
 
 pub fn execute(line: &str) {
     let mut parts = line.split_whitespace();
@@ -10,7 +11,7 @@ pub fn execute(line: &str) {
 
     match command {
         "help" => help(),
-        "clear" => clear(),
+        "clear" => clearterm(),
         "echo" => echo(parts),
         "info" => info(),
         "panic" => panic(),
@@ -20,8 +21,6 @@ pub fn execute(line: &str) {
         "shutdown" => shutdown(),
         "setbg" => setbg(parts),
         "setfg" => setfg(parts),
-
-
         _ => {
             console_println!("Unknown command: {}", command);
             console_println!("Type 'help' for a list of commands.");
@@ -43,8 +42,8 @@ fn help() {
     console_println!("  setfg      - Sets the foreground color.");
 }
 
-fn clear() {
-    console::clear();
+fn clearterm() {
+    with_console(|console| console::clear())
 }
 
 fn echo(args: core::str::SplitWhitespace<'_>) {
@@ -133,3 +132,129 @@ fn setfg(mut args: core::str::SplitWhitespace<'_>) {
         Console::clear(console);
     });
 }
+
+fn test_set_color(
+    color_name: &str,
+    expected: Color,
+    set_color: fn(core::str::SplitWhitespace<'_>),
+    get_color: fn(&mut Console) -> Color,
+    error_message: &'static str,
+) -> TestResult {
+    set_color(color_name.split_whitespace());
+
+    with_console(|console| {
+        if get_color(console) == expected {
+            TestResult::Pass
+        } else {
+            TestResult::Fail(error_message)
+        }
+    })
+}
+
+///DO NOT USE GLOBALLY.
+///Only to be used if you know EXACTLY what this does.
+///Youve been warned.
+macro_rules! color_test {
+    ($test_name:ident, $setter:ident, $getter:path, $name:expr, $color:expr, $error:expr) => {
+        #[test]
+        fn $test_name() -> TestResult {
+            test_set_color(
+                $name,
+                $color,
+                $setter,
+                $getter,
+                $error,
+            )
+        }
+    };
+}
+
+color_test!(
+    test_setbg_red,
+    setbg,
+    Console::get_background,
+    "red",
+    Color::RED,
+    "set red failed"
+);
+
+color_test!(
+    test_setbg_black,
+    setbg,
+    Console::get_background,
+    "black",
+    Color::BLACK,
+    "set black failed"
+);
+
+color_test!(
+    test_setbg_green,
+    setbg,
+    Console::get_background,
+    "green",
+    Color::GREEN,
+    "set green failed"
+);
+
+color_test!(
+    test_setbg_blue,
+    setbg,
+    Console::get_background,
+    "blue",
+    Color::BLUE,
+    "set blue failed"
+);
+
+color_test!(
+    test_setbg_white,
+    setbg,
+    Console::get_background,
+    "white",
+    Color::WHITE,
+    "set white failed"
+);
+
+color_test!(
+    test_setfg_red,
+    setfg,
+    Console::get_foreground,
+    "red",
+    Color::RED,
+    "set red failed"
+);
+
+color_test!(
+    test_setfg_black,
+    setfg,
+    Console::get_foreground,
+    "black",
+    Color::BLACK,
+    "set black failed"
+);
+
+color_test!(
+    test_setfg_green,
+    setfg,
+    Console::get_foreground,
+    "green",
+    Color::GREEN,
+    "set green failed"
+);
+
+color_test!(
+    test_setfg_blue,
+    setfg,
+    Console::get_foreground,
+    "blue",
+    Color::BLUE,
+    "set blue failed"
+);
+
+color_test!(
+    test_setfg_white,
+    setfg,
+    Console::get_foreground,
+    "white",
+    Color::WHITE,
+    "set white failed"
+);
