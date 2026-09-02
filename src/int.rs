@@ -9,7 +9,7 @@ use x86_64::{
     },
 };
 
-use crate::{console::{self}, gdt};
+use crate::{console::{self}, fb::Color, gdt};
 use crate::pic;
 
 static IDT: Once<InterruptDescriptorTable> = Once::new();
@@ -139,12 +139,10 @@ pub fn init() {
 extern "x86-interrupt" fn breakpoint_handler(
     stack_frame: InterruptStackFrame,
 ) {
-    crate::serial_println!();
     crate::serial_println!("EXCEPTION: BREAKPOINT");
     crate::serial_println!("{:#?}", stack_frame);
-    crate::console_println!();
-    crate::console_println!("EXCEPTION: BREAKPOINT");
-    crate::console_println!("{:#?}", stack_frame);
+    crate::console_println_color!(Color::RED, "EXCEPTION: BREAKPOINT");
+    crate::console_println_color!(Color::RED, "{:#?}", stack_frame);
 }
 
 extern "x86-interrupt" fn double_fault_handler(
