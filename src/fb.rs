@@ -45,17 +45,24 @@ pub struct Color {
 impl Color {
     pub const BLACK: Color = Color { r: 0, g: 0, b: 0 };
 
-    pub const WHITE: Color = Color {
-        r: 255,
-        g: 255,
-        b: 255,
-    };
+    pub const WHITE: Color = Color { r: 255, g: 255, b: 255 };
 
     pub const RED: Color = Color { r: 255, g: 0, b: 0 };
 
     pub const GREEN: Color = Color { r: 0, g: 255, b: 0 };
 
     pub const BLUE: Color = Color { r: 0, g: 0, b: 255 };
+
+    pub fn from_name(name: &str) -> Option<Color> {
+        match name {
+            "black" => Some(Color::BLACK),
+            "red" => Some(Color::RED),
+            "green" => Some(Color::GREEN),
+            "white" => Some(Color::WHITE),
+            "blue" => Some(Color::BLUE),
+            _ => None
+        }
+    }
 }
 
 #[derive(Clone, Copy)]
