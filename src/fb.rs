@@ -34,6 +34,7 @@ const BACKBUFFER_SIZE: usize = MAX_WIDTH * MAX_HEIGHT * BYTES_PER_PIXEL;
 
 static mut BACKBUFFER: [u8; BACKBUFFER_SIZE] = [0; BACKBUFFER_SIZE];
 
+#[derive(PartialEq)]
 #[derive(Clone, Copy)]
 pub struct Color {
     pub r: u8,

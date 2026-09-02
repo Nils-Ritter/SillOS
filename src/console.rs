@@ -300,6 +300,16 @@ impl Console {
         self.background = color;
     }
 
+    #[expect(unused)]
+    pub fn get_background(&mut self) -> Color {
+        return self.background;
+    }
+
+    #[expect(unused)]
+    pub fn get_foreground(&mut self) -> Color {
+        return self.foreground;
+    }
+
     fn newline(&mut self) {
         self.cursor_x = 0;
 
