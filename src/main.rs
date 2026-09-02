@@ -23,7 +23,7 @@ mod trivial_assert_test;
 #[path = "../tests/interrupts.rs"]
 mod interrupts_test;
 
-use crate::fb::Color;
+use crate::{console::with_console, fb::Color};
 pub use crate::test::{TestResult, test};
 
 extern crate sillos_test_macro;
@@ -81,6 +81,8 @@ fn kinit(){
         KINIT_CALLED = true;
     }
 
+    console::set_input_allowed(false);
+
     serial_print!("[STARTUP] initializing framebuf...");
     fb::init();
     fb::clear(fb::Color::BLACK);
@@ -128,6 +130,7 @@ fn kernel() {
         \/                       \/        \/"#);
     fb::present();
     console_print!("> ");
+    console::set_input_allowed(true);
     fb::present();
 }
 

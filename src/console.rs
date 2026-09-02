@@ -23,6 +23,8 @@ const INPUT_SIZE: usize = 256;
 const MAX_COLUMNS: usize = 1920 / CHAR_WIDTH;
 const MAX_ROWS: usize = 1080 / CHAR_HEIGHT;
 
+static mut INPUT_ALLOWED: bool = true;
+
 // ============================================================
 // Cell
 // ============================================================
@@ -86,7 +88,12 @@ pub struct Console {
 // Construction
 // ============================================================
 
+pub fn set_input_allowed(toggle: bool){
+    unsafe { INPUT_ALLOWED = toggle; }
+}
+
 impl Console {
+
     pub fn new(
         width: usize,
         height: usize,
@@ -608,33 +615,35 @@ impl Console {
     // Keyboard
     // ========================================================
     pub fn receive_key(&mut self, key: char) {
-        match key {
-            '\n' | '\r' => {
-                self.put_char(b'\n');
+        if unsafe { INPUT_ALLOWED }{
+            match key {
+                '\n' | '\r' => {
+                    self.put_char(b'\n');
 
-                self.line_ready = true;
-            }
-
-            '\u{8}' | '\u{7f}' => {
-                if self.input_len > 0 && self.cursor_x > 2 {
-                    self.input_len -= 1;
-                    self.put_char(8);
+                    self.line_ready = true;
                 }
-            }
 
-            character
-                if character.is_ascii()
-                    && !character.is_ascii_control() =>
-            {
-                if self.input_len < INPUT_SIZE {
-                    self.input[self.input_len] = character as u8;
-                    self.input_len += 1;
-
-                    self.put_char(character as u8);
+                '\u{8}' | '\u{7f}' => {
+                    if self.input_len > 0 && self.cursor_x > 2 {
+                        self.input_len -= 1;
+                        self.put_char(8);
+                    }
                 }
-            }
 
-            _ => {}
+                character
+                    if character.is_ascii()
+                        && !character.is_ascii_control() =>
+                {
+                    if self.input_len < INPUT_SIZE {
+                        self.input[self.input_len] = character as u8;
+                        self.input_len += 1;
+
+                        self.put_char(character as u8);
+                    }
+                }
+
+                _ => {}
+            }
         }
     }
 
@@ -935,10 +944,9 @@ macro_rules! console_println_color {
 
 #[cfg(feature = "test")]
 mod tests {
-    use crate::test::{
-        test,
-        TestResult,
-    };
+    use crate::{console, test::{
+        TestResult, test,
+    }};
 
     use super::{
         Cell,

@@ -43,7 +43,7 @@ fn help() {
 }
 
 fn clearterm() {
-    with_console(|console| console::clear())
+    console::clear();
 }
 
 fn echo(args: core::str::SplitWhitespace<'_>) {
