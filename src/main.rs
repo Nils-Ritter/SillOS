@@ -81,8 +81,6 @@ fn kinit(){
         KINIT_CALLED = true;
     }
 
-    console::set_input_allowed(false);
-
     serial_print!("[STARTUP] initializing framebuf...");
     fb::init();
     fb::clear(fb::Color::BLACK);
@@ -130,7 +128,6 @@ fn kernel() {
         \/                       \/        \/"#);
     fb::present();
     console_print!("> ");
-    console::set_input_allowed(true);
     fb::present();
 }
 
