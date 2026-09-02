@@ -23,7 +23,6 @@ const INPUT_SIZE: usize = 256;
 const MAX_COLUMNS: usize = 1920 / CHAR_WIDTH;
 const MAX_ROWS: usize = 1080 / CHAR_HEIGHT;
 
-static mut INPUT_ALLOWED: bool = true;
 
 // ============================================================
 // Cell
