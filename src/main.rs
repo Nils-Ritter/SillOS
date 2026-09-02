@@ -88,7 +88,7 @@ fn kinit(){
     serial_print!("[STARTUP] initializing console...");
     console::init();
     serial_println!("[OK]");
-    
+
     console_print!("[STARTUP] Initializing GDT...");
     gdt::init();
     console_println!("[OK]");
@@ -119,6 +119,7 @@ fn kinit(){
 fn kernel() {
     console_println!("Hello from SillOS!");
     console_println!("Framebuffer: {}x{}", fb::width(), fb::height());
+    fb::present();
     console_print!("> ");
     fb::present();
 }

@@ -1,4 +1,4 @@
-use crate::{acpi, console, console_print, console_println, test::exit_qemu};
+use crate::{acpi, console::{self, Console, with_console}, console_print, console_println, fb::Color, test::exit_qemu};
 
 pub fn execute(line: &str) {
     let mut parts = line.split_whitespace();
@@ -18,6 +18,8 @@ pub fn execute(line: &str) {
         "sven" => sven(), //NOTE: Do not add this to help
         "reboot" => reboot(),
         "shutdown" => shutdown(),
+        "setbg" => setbg(parts),
+        "setfg" => setfg(parts),
 
 
         _ => {
@@ -37,6 +39,8 @@ fn help() {
     console_println!("  bp         - Sets and steps over a breakpoint");
     console_println!("  reboot     - Reboots the machine.");
     console_println!("  shutdown   - Shuts the computer down.");
+    console_println!("  setbg      - Sets the background color.");
+    console_println!("  setfg      - Sets the foreground color.");
 }
 
 fn clear() {
@@ -86,4 +90,46 @@ fn shutdown(){
     console_println!("There currently is no support for acpi shutdown.");
     console_println!("However, qemu will close normally.");
     exit_qemu(true);
+}
+
+fn setbg(mut args: core::str::SplitWhitespace<'_>) {
+    let Some(color_name) = args.next() else {
+        console_println!("Incorrect usage!");
+        console_println!("Usage: setbg <color>");
+        return;
+    };
+
+    let Some(color) = Color::from_name(color_name) else {
+        console_println!("Unknown color: {}", color_name);
+        return;
+    };
+
+    with_console(|console| {
+        Console::set_background(console, color);
+    });
+
+    with_console(|console| {
+        Console::clear(console);
+    });
+}
+
+fn setfg(mut args: core::str::SplitWhitespace<'_>) {
+    let Some(color_name) = args.next() else {
+        console_println!("Incorrect usage!");
+        console_println!("Usage: setfg <color>");
+        return;
+    };
+
+    let Some(color) = Color::from_name(color_name) else {
+        console_println!("Unknown color: {}", color_name);
+        return;
+    };
+
+    with_console(|console| {
+        Console::set_foreground(console, color);
+    });
+
+    with_console(|console| {
+        Console::clear(console);
+    });
 }

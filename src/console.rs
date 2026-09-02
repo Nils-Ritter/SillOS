@@ -537,7 +537,7 @@ pub fn init() {
     fb::present();
 }
 
-fn with_console<F, R>(f: F) -> R
+pub fn with_console<F, R>(f: F) -> R
 where
     F: FnOnce(&mut Console) -> R,
 {
