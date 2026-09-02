@@ -1,4 +1,4 @@
-use crate::{acpi, console::{self, Console, with_console}, console_print, console_println, fb::Color, test::exit_qemu};
+use crate::{acpi, console::{self, Console, clear, with_console}, console_print, console_println, fb::Color, test::exit_qemu};
 use crate::test::{test, TestResult};
 
 pub fn execute(line: &str) {
@@ -11,7 +11,7 @@ pub fn execute(line: &str) {
 
     match command {
         "help" => help(),
-        "clear" => clear(),
+        "clear" => clearterm(),
         "echo" => echo(parts),
         "info" => info(),
         "panic" => panic(),
@@ -42,8 +42,8 @@ fn help() {
     console_println!("  setfg      - Sets the foreground color.");
 }
 
-fn clear() {
-    console::clear();
+fn clearterm() {
+    with_console(|console| console::clear())
 }
 
 fn echo(args: core::str::SplitWhitespace<'_>) {
