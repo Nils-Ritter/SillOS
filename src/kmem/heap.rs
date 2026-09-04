@@ -52,7 +52,7 @@ pub const HEAP_START: usize =
 ///
 /// This can be increased later or replaced with a dynamically growing heap.
 pub const HEAP_SIZE: usize =
-    1024 * 1024; // 1 MiB
+    1024 * 1024 * 100; // 100 MiB
 
 /// Global kernel allocator.
 #[global_allocator]

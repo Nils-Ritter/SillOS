@@ -83,6 +83,7 @@ fn kinit(){
         KINIT_CALLED = true;
     }
 
+
     serial_print!("[STARTUP] initializing framebuf...");
     fb::init();
     fb::clear(fb::Color::BLACK);

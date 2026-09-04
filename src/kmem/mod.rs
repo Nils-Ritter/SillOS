@@ -154,10 +154,10 @@ pub unsafe fn phys_to_ptr<T>(
     }
 }
 
-/// Print a detailed summary of the kernel's memory configuration.
+/// Print detailed information about the kernel's memory configuration.
 ///
-/// This is intended for debugging and early kernel development. It does
-/// not modify the memory-management state.
+/// This function is intended for debugging the early memory-management
+/// subsystem. It does not allocate or modify memory.
 pub fn mem_analyze() {
     use crate::fb::Color;
 
@@ -181,22 +181,18 @@ pub fn mem_analyze() {
         "========================================"
     );
 
-    // --------------------------------------------------------
+    // ========================================================
     // HHDM
-    // --------------------------------------------------------
+    // ========================================================
 
     let hhdm =
         match HHDM_REQUEST.response() {
             Some(response) => response,
+
             None => {
                 console_println_color!(
                     Color::GREEN,
-                    "HHDM: NOT AVAILABLE"
-                );
-
-                console_println_color!(
-                    Color::GREEN,
-                    "========================================"
+                    "[HHDM] NOT AVAILABLE"
                 );
 
                 return;
@@ -215,26 +211,22 @@ pub fn mem_analyze() {
 
     console_println_color!(
         Color::GREEN,
-        "  Offset:       {:#018x}",
+        "  Offset:          {:#018x}",
         hhdm.offset
     );
 
-    // --------------------------------------------------------
+    // ========================================================
     // Memory map
-    // --------------------------------------------------------
+    // ========================================================
 
     let memory_map =
         match MEMMAP_REQUEST.response() {
             Some(response) => response,
+
             None => {
                 console_println_color!(
                     Color::GREEN,
-                    "Memory map: NOT AVAILABLE"
-                );
-
-                console_println_color!(
-                    Color::GREEN,
-                    "========================================"
+                    "[MEMORY MAP] NOT AVAILABLE"
                 );
 
                 return;
@@ -244,36 +236,20 @@ pub fn mem_analyze() {
     let entries =
         memory_map.entries();
 
-    console_println_color!(
-        Color::GREEN,
-        ""
-    );
+    let mut total_memory = 0u64;
+    let mut usable_memory = 0u64;
+    let mut reserved_memory = 0u64;
+    let mut reclaimable_memory = 0u64;
+    let mut bootloader_memory = 0u64;
+    let mut kernel_memory = 0u64;
+    let mut framebuffer_memory = 0u64;
+    let mut bad_memory = 0u64;
+    let mut other_memory = 0u64;
 
-    console_println_color!(
-        Color::GREEN,
-        "[MEMORY MAP]"
-    );
+    let mut usable_regions = 0usize;
 
-    console_println_color!(
-        Color::GREEN,
-        "  Entries:      {}",
-        entries.len()
-    );
-
-    let mut total_memory: u64 = 0;
-    let mut usable_memory: u64 = 0;
-    let mut reserved_memory: u64 = 0;
-    let mut reclaimable_memory: u64 = 0;
-    let mut bootloader_memory: u64 = 0;
-    let mut kernel_and_modules: u64 = 0;
-    let mut bad_memory: u64 = 0;
-    let mut framebuffer_memory: u64 = 0;
-    let mut other_memory: u64 = 0;
-
-    let mut usable_regions: usize = 0;
-
-    let mut first_usable_base: Option<u64> = None;
-    let mut last_usable_end: Option<u64> = None;
+    let mut first_usable_base = None;
+    let mut last_usable_end = None;
 
     for entry in entries {
         let base = entry.base;
@@ -321,18 +297,18 @@ pub fn mem_analyze() {
             }
 
             limine::memmap::MEMMAP_EXECUTABLE_AND_MODULES => {
-                kernel_and_modules =
-                    kernel_and_modules.saturating_add(length);
-            }
-
-            limine::memmap::MEMMAP_BAD_MEMORY => {
-                bad_memory =
-                    bad_memory.saturating_add(length);
+                kernel_memory =
+                    kernel_memory.saturating_add(length);
             }
 
             limine::memmap::MEMMAP_FRAMEBUFFER => {
                 framebuffer_memory =
                     framebuffer_memory.saturating_add(length);
+            }
+
+            limine::memmap::MEMMAP_BAD_MEMORY => {
+                bad_memory =
+                    bad_memory.saturating_add(length);
             }
 
             _ => {
@@ -344,69 +320,92 @@ pub fn mem_analyze() {
 
     console_println_color!(
         Color::GREEN,
-        "  Total physical: {} KiB ({} MiB)",
-        total_memory / 1024,
+        ""
+    );
+
+    console_println_color!(
+        Color::GREEN,
+        "[MEMORY MAP]"
+    );
+
+    console_println_color!(
+        Color::GREEN,
+        "  Entries:         {}",
+        entries.len()
+    );
+
+    console_println_color!(
+        Color::GREEN,
+        "  Total:           {} KiB",
+        total_memory / 1024
+    );
+
+    console_println_color!(
+        Color::GREEN,
+        "  Total:           {} MiB",
         total_memory / (1024 * 1024)
     );
 
     console_println_color!(
         Color::GREEN,
-        "  Usable:         {} KiB ({} MiB)",
-        usable_memory / 1024,
+        "  Usable:          {} MiB",
         usable_memory / (1024 * 1024)
     );
 
     console_println_color!(
         Color::GREEN,
-        "  Usable regions: {}",
+        "  Usable regions:  {}",
         usable_regions
     );
 
     console_println_color!(
         Color::GREEN,
-        "  Reserved:       {} KiB",
+        "  Reserved:        {} KiB",
         reserved_memory / 1024
     );
 
     console_println_color!(
         Color::GREEN,
-        "  ACPI reclaim:   {} KiB",
+        "  ACPI reclaim:    {} KiB",
         reclaimable_memory / 1024
     );
 
     console_println_color!(
         Color::GREEN,
-        "  Bootloader:     {} KiB",
+        "  Bootloader:      {} KiB",
         bootloader_memory / 1024
     );
 
     console_println_color!(
         Color::GREEN,
-        "  Kernel/modules: {} KiB",
-        kernel_and_modules / 1024
+        "  Kernel/modules:  {} KiB",
+        kernel_memory / 1024
     );
 
     console_println_color!(
         Color::GREEN,
-        "  Framebuffer:    {} KiB",
+        "  Framebuffer:     {} KiB",
         framebuffer_memory / 1024
     );
 
     console_println_color!(
         Color::GREEN,
-        "  Bad memory:     {} KiB",
+        "  Bad memory:      {} KiB",
         bad_memory / 1024
     );
 
     console_println_color!(
         Color::GREEN,
-        "  Other:          {} KiB",
+        "  Other:           {} KiB",
         other_memory / 1024
     );
 
-    // --------------------------------------------------------
+    // ========================================================
     // Physical frames
-    // --------------------------------------------------------
+    // ========================================================
+
+    let frame_count =
+        usable_memory / frame::FRAME_SIZE;
 
     console_println_color!(
         Color::GREEN,
@@ -418,12 +417,600 @@ pub fn mem_analyze() {
         "[PHYSICAL FRAMES]"
     );
 
-    let frame_count =
-        usable_memory / frame::FRAME_SIZE;
+    console_println_color!(
+        Color::GREEN,
+        "  Frame size:      {} bytes",
+        frame::FRAME_SIZE
+    );
 
     console_println_color!(
         Color::GREEN,
-        "  Frame size:     {} bytes",
-        frame::FRAME_SIZE
+        "  Usable frames:   {}",
+        frame_count
+    );
+
+    console_println_color!(
+        Color::GREEN,
+        "  Frame memory:    {} MiB",
+        (frame_count * frame::FRAME_SIZE)
+            / (1024 * 1024)
+    );
+
+    match first_usable_base {
+        Some(base) => {
+            console_println_color!(
+                Color::GREEN,
+                "  First usable:    {:#018x}",
+                base
+            );
+        }
+
+        None => {
+            console_println_color!(
+                Color::GREEN,
+                "  First usable:    NONE"
+            );
+        }
+    }
+
+    match last_usable_end {
+        Some(end) => {
+            console_println_color!(
+                Color::GREEN,
+                "  Last usable end: {:#018x}",
+                end
+            );
+        }
+
+        None => {
+            console_println_color!(
+                Color::GREEN,
+                "  Last usable end: NONE"
+            );
+        }
+    }
+
+    // ========================================================
+    // Physical address space
+    // ========================================================
+
+    console_println_color!(
+        Color::GREEN,
+        ""
+    );
+
+    console_println_color!(
+        Color::GREEN,
+        "[PHYSICAL ADDRESS SPACE]"
+    );
+
+    let mut lowest_address =
+        u64::MAX;
+
+    let mut highest_address =
+        0u64;
+
+    for entry in entries {
+        lowest_address =
+            lowest_address.min(
+                entry.base
+            );
+
+        highest_address =
+            highest_address.max(
+                entry.base
+                    .saturating_add(entry.length)
+            );
+    }
+
+    if lowest_address != u64::MAX {
+        console_println_color!(
+            Color::GREEN,
+            "  Lowest address:  {:#018x}",
+            lowest_address
+        );
+    }
+
+    console_println_color!(
+        Color::GREEN,
+        "  Highest address: {:#018x}",
+        highest_address
+    );
+
+    console_println_color!(
+        Color::GREEN,
+        "  Address span:    {} MiB",
+        highest_address
+            .saturating_sub(
+                lowest_address
+            )
+            / (1024 * 1024)
+    );
+
+    // ========================================================
+    // Memory-map regions
+    // ========================================================
+
+    console_println_color!(
+        Color::GREEN,
+        ""
+    );
+
+    console_println_color!(
+        Color::GREEN,
+        "[MEMORY MAP REGIONS]"
+    );
+
+    for (index, entry) in
+        entries.iter().enumerate()
+    {
+        let start =
+            entry.base;
+
+        let end =
+            entry.base
+                .saturating_add(
+                    entry.length
+                );
+
+        console_println_color!(
+            Color::GREEN,
+            "  #{}: {:#018x} - {:#018x} | {} KiB | type {}",
+            index,
+            start,
+            end,
+            entry.length / 1024,
+            entry.type_
+        );
+    }
+
+    // ========================================================
+    // Page tables / CR3
+    // ========================================================
+
+    console_println_color!(
+        Color::GREEN,
+        ""
+    );
+
+    console_println_color!(
+        Color::GREEN,
+        "[PAGE TABLES]"
+    );
+
+    let (cr3_frame, cr3_flags) =
+        Cr3::read();
+
+    let cr3_physical =
+        cr3_frame
+            .start_address()
+            .as_u64();
+
+    console_println_color!(
+        Color::GREEN,
+        "  CR3 physical:   {:#018x}",
+        cr3_physical
+    );
+
+    match hhdm.offset.checked_add(
+        cr3_physical
+    ) {
+        Some(address) => {
+            console_println_color!(
+                Color::GREEN,
+                "  CR3 virtual:    {:#018x}",
+                address
+            );
+        }
+
+        None => {
+            console_println_color!(
+                Color::GREEN,
+                "  CR3 virtual:    OVERFLOW"
+            );
+        }
+    }
+
+    console_println_color!(
+        Color::GREEN,
+        "  CR3 flags:      {:?}",
+        cr3_flags
+    );
+
+    console_println_color!(
+        Color::GREEN,
+        "  Page size:      4096 bytes"
+    );
+
+    // ========================================================
+    // HHDM address examples
+    // ========================================================
+
+    console_println_color!(
+        Color::GREEN,
+        ""
+    );
+
+    console_println_color!(
+        Color::GREEN,
+        "[HHDM ADDRESS CONVERSION]"
+    );
+
+    if let Some(base) =
+        first_usable_base
+    {
+        match hhdm.offset.checked_add(
+            base
+        ) {
+            Some(virtual_address) => {
+                console_println_color!(
+                    Color::GREEN,
+                    "  Physical:       {:#018x}",
+                    base
+                );
+
+                console_println_color!(
+                    Color::GREEN,
+                    "  HHDM virtual:   {:#018x}",
+                    virtual_address
+                );
+            }
+
+            None => {
+                console_println_color!(
+                    Color::GREEN,
+                    "  First usable HHDM address overflow"
+                );
+            }
+        }
+    }
+
+    if let Some(end) =
+        last_usable_end
+    {
+        match hhdm.offset.checked_add(
+            end
+        ) {
+            Some(virtual_address) => {
+                console_println_color!(
+                    Color::GREEN,
+                    "  Last physical:  {:#018x}",
+                    end
+                );
+
+                console_println_color!(
+                    Color::GREEN,
+                    "  Last HHDM VA:   {:#018x}",
+                    virtual_address
+                );
+            }
+
+            None => {
+                console_println_color!(
+                    Color::GREEN,
+                    "  Last usable HHDM address overflow"
+                );
+            }
+        }
+    }
+
+    // ========================================================
+    // Kernel heap
+    // ========================================================
+
+    console_println_color!(
+        Color::GREEN,
+        ""
+    );
+
+    console_println_color!(
+        Color::GREEN,
+        "[KERNEL HEAP]"
+    );
+
+    let heap_start =
+        HEAP_START;
+
+    let heap_size =
+        HEAP_SIZE;
+
+    let heap_end =
+        heap_start
+            .checked_add(
+                heap_size
+            );
+
+    console_println_color!(
+        Color::GREEN,
+        "  Start:          {:#018x}",
+        heap_start
+    );
+
+    match heap_end {
+        Some(end) => {
+            console_println_color!(
+                Color::GREEN,
+                "  End:            {:#018x}",
+                end
+            );
+        }
+
+        None => {
+            console_println_color!(
+                Color::GREEN,
+                "  End:            OVERFLOW"
+            );
+        }
+    }
+
+    console_println_color!(
+        Color::GREEN,
+        "  Size:           {} KiB",
+        heap_size / 1024
+    );
+
+    console_println_color!(
+        Color::GREEN,
+        "  Size:           {} MiB",
+        heap_size / (1024 * 1024)
+    );
+
+    console_println_color!(
+        Color::GREEN,
+        "  Pages:          {}",
+        (heap_size + 4095) / 4096
+    );
+
+    console_println_color!(
+        Color::GREEN,
+        "  Start aligned:  {}",
+        heap_start % 4096 == 0
+    );
+
+    console_println_color!(
+        Color::GREEN,
+        "  Size aligned:   {}",
+        heap_size % 4096 == 0
+    );
+
+    match heap_end {
+        Some(end) => {
+            console_println_color!(
+                Color::GREEN,
+                "  End aligned:    {}",
+                end % 4096 == 0
+            );
+        }
+
+        None => {}
+    }
+
+    // ========================================================
+    // Address-space layout
+    // ========================================================
+
+    console_println_color!(
+        Color::GREEN,
+        ""
+    );
+
+    console_println_color!(
+        Color::GREEN,
+        "[ADDRESS SPACE]"
+    );
+
+    console_println_color!(
+        Color::GREEN,
+        "  HHDM base:      {:#018x}",
+        hhdm.offset
+    );
+
+    console_println_color!(
+        Color::GREEN,
+        "  Heap base:      {:#018x}",
+        heap_start
+    );
+
+    if (heap_start as u64) >= hhdm.offset {
+        console_println_color!(
+            Color::GREEN,
+            "  Heap above HHDM: true"
+        );
+    } else {
+        console_println_color!(
+            Color::GREEN,
+            "  Heap above HHDM: false"
+        );
+    }
+
+    // ========================================================
+    // Frame capacity
+    // ========================================================
+
+    console_println_color!(
+        Color::GREEN,
+        ""
+    );
+
+    console_println_color!(
+        Color::GREEN,
+        "[FRAME CAPACITY]"
+    );
+
+    let heap_frames =
+        (heap_size + 4095) / 4096;
+
+    console_println_color!(
+        Color::GREEN,
+        "  Heap pages:     {}",
+        heap_frames
+    );
+
+    console_println_color!(
+        Color::GREEN,
+        "  Usable frames:  {}",
+        frame_count
+    );
+
+    if frame_count >= heap_frames as u64 {
+        console_println_color!(
+            Color::GREEN,
+            "  Heap frame cost: {}.{}%",
+            (heap_frames as u128 * 10000
+                / frame_count as u128)
+                / 100,
+            (heap_frames as u128 * 10000
+                / frame_count as u128)
+                % 100
+        );
+    } else {
+        console_println_color!(
+            Color::GREEN,
+            "  Heap frame cost: exceeds usable-frame count"
+        );
+    }
+
+    // ========================================================
+    // Alignment diagnostics
+    // ========================================================
+
+    console_println_color!(
+        Color::GREEN,
+        ""
+    );
+
+    console_println_color!(
+        Color::GREEN,
+        "[ALIGNMENT]"
+    );
+
+    console_println_color!(
+        Color::GREEN,
+        "  Page size:      {}",
+        4096
+    );
+
+    console_println_color!(
+        Color::GREEN,
+        "  HHDM aligned:   {}",
+        hhdm.offset % 4096 == 0
+    );
+
+    console_println_color!(
+        Color::GREEN,
+        "  CR3 aligned:    {}",
+        cr3_physical % 4096 == 0
+    );
+
+    console_println_color!(
+        Color::GREEN,
+        "  Heap aligned:   {}",
+        heap_start % 4096 == 0
+    );
+
+    if let Some(base) =
+        first_usable_base
+    {
+        console_println_color!(
+            Color::GREEN,
+            "  First frame aligned: {}",
+            base % 4096 == 0
+        );
+    }
+
+    // ========================================================
+    // Summary
+    // ========================================================
+
+    console_println_color!(
+        Color::GREEN,
+        ""
+    );
+
+    console_println_color!(
+        Color::GREEN,
+        "[SUMMARY]"
+    );
+
+    let usable_percent =
+        if total_memory != 0 {
+            (usable_memory as u128 * 10000)
+                / total_memory as u128
+        } else {
+            0
+        };
+
+    console_println_color!(
+        Color::GREEN,
+        "  Physical RAM:   {} MiB",
+        total_memory / (1024 * 1024)
+    );
+
+    console_println_color!(
+        Color::GREEN,
+        "  Usable RAM:     {} MiB",
+        usable_memory / (1024 * 1024)
+    );
+
+    console_println_color!(
+        Color::GREEN,
+        "  Usable RAM:     {}.{}%",
+        usable_percent / 100,
+        usable_percent % 100
+    );
+
+    console_println_color!(
+        Color::GREEN,
+        "  Usable frames:  {}",
+        frame_count
+    );
+
+    console_println_color!(
+        Color::GREEN,
+        "  Heap size:      {} MiB",
+        heap_size / (1024 * 1024)
+    );
+
+    console_println_color!(
+        Color::GREEN,
+        "  Heap pages:     {}",
+        heap_frames
+    );
+
+    console_println_color!(
+        Color::GREEN,
+        "  HHDM:           {:#018x}",
+        hhdm.offset
+    );
+
+    console_println_color!(
+        Color::GREEN,
+        "  CR3:            {:#018x}",
+        cr3_physical
+    );
+
+    console_println_color!(
+        Color::GREEN,
+        ""
+    );
+
+    console_println_color!(
+        Color::GREEN,
+        "========================================"
+    );
+
+    console_println_color!(
+        Color::GREEN,
+        "       END MEMORY ANALYSIS"
+    );
+
+    console_println_color!(
+        Color::GREEN,
+        "========================================"
+    );
+
+    console_println_color!(
+        Color::GREEN,
+        ""
     );
 }
