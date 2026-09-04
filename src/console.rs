@@ -873,64 +873,154 @@ pub fn clear() {
 }
 
 // ============================================================
+// Serial Mirroring
+// ============================================================
+
+use core::sync::atomic::{
+    AtomicBool,
+    Ordering,
+};
+
+pub static SERIAL_MIRROR: AtomicBool =
+    AtomicBool::new(false);
+
+pub fn set_serial_mirror(enabled: bool) {
+    SERIAL_MIRROR.store(
+        enabled,
+        Ordering::Relaxed,
+    );
+}
+
+#[inline]
+pub fn serial_mirror_enabled() -> bool {
+    SERIAL_MIRROR.load(
+        Ordering::Relaxed,
+    )
+}
+
+pub fn write_fmt_mirrored(
+    args: core::fmt::Arguments<'_>,
+) {
+    write_fmt(args);
+
+    if serial_mirror_enabled() {
+        crate::serial::write_fmt(args);
+    }
+}
+
+pub fn write_fmt_color_mirrored(
+    color: crate::fb::Color,
+    args: core::fmt::Arguments<'_>,
+) {
+    write_fmt_color(
+        color,
+        args,
+    );
+
+    if serial_mirror_enabled() {
+        crate::serial::write_fmt(args);
+    }
+}
+
+// ============================================================
 // Printing macros
 // ============================================================
 
 #[macro_export]
 macro_rules! console_print {
-    ($($arg:tt)*) => {
+    ($($arg:tt)*) => {{
+        let args = core::format_args!($($arg)*);
+
         $crate::console::write_fmt(
-            core::format_args!($($arg)*)
-        )
-    };
+            args
+        );
+
+        if $crate::console::serial_mirror_enabled() {
+            $crate::serial_print!(
+                $($arg)*
+            );
+        }
+    }};
 }
 
 #[macro_export]
 macro_rules! console_println {
-    () => {
+    () => {{
         $crate::console::write_fmt(
             core::format_args!("\n")
-        )
-    };
+        );
 
-    ($($arg:tt)*) => {
+        if $crate::console::serial_mirror_enabled() {
+            $crate::serial_println!();
+        }
+    }};
+
+    ($($arg:tt)*) => {{
+        let args = core::format_args!(
+            "{}\n",
+            core::format_args!($($arg)*)
+        );
+
         $crate::console::write_fmt(
-            core::format_args!(
-                "{}\n",
-                core::format_args!($($arg)*)
-            )
-        )
-    };
+            args
+        );
+
+        if $crate::console::serial_mirror_enabled() {
+            $crate::serial_println!(
+                $($arg)*
+            );
+        }
+    }};
 }
 
 #[macro_export]
 macro_rules! console_print_color {
-    ($color:expr, $($arg:tt)*) => {
+    ($color:expr, $($arg:tt)*) => {{
+        let args = core::format_args!($($arg)*);
+
         $crate::console::write_fmt_color(
             $color,
-            core::format_args!($($arg)*)
-        )
-    };
+            args
+        );
+
+        if $crate::console::serial_mirror_enabled() {
+            $crate::serial_print!(
+                $($arg)*
+            );
+        }
+    }};
 }
 
 #[macro_export]
 macro_rules! console_println_color {
-    ($color:expr) => {
+    ($color:expr) => {{
         $crate::console::write_fmt_color(
             $color,
             core::format_args!("\n")
-        )
-    };
+        );
 
-    ($color:expr, $($arg:tt)*) => {
+        if $crate::console::serial_mirror_enabled() {
+            $crate::serial_println!();
+        }
+    }};
+
+    ($color:expr, $($arg:tt)*) => {{
+        let args = core::format_args!(
+            "{}\n",
+            core::format_args!($($arg)*)
+        );
+
         $crate::console::write_fmt_color(
             $color,
-            core::format_args!(
-                "{}\n",
-                core::format_args!($($arg)*)
-            )
-        )
-    };
+            args
+        );
+
+        if $crate::console::serial_mirror_enabled() {
+            $crate::serial_println!(
+                $($arg)*
+            );
+        }
+    }};
 }
 
 // ============================================================

@@ -2,6 +2,8 @@
 #![no_main]
 #![feature(abi_x86_interrupt)]
 
+extern crate alloc;
+
 mod fb;
 mod fs;
 mod acpi;
@@ -81,6 +83,7 @@ fn kinit(){
         KINIT_CALLED = true;
     }
 
+
     serial_print!("[STARTUP] initializing framebuf...");
     fb::init();
     fb::clear(fb::Color::BLACK);
@@ -110,6 +113,13 @@ fn kinit(){
     acpi::init();
     console_println_color!(Color::GREEN, "[OK]");
 
+    console_print!("[STARTUP] initializing kmem...");
+    let (mut mapper, mut frame_allocator) = unsafe { kmem::init() };
+    unsafe {
+        kmem::init_heap(&mut mapper, &mut frame_allocator).expect("failed to init heap");
+    }
+    console_println_color!(Color::GREEN, "[OK]");
+
     console_println!();
     console_println!("[INFO] Kernel is running.");
     console_println!("[INFO] Timer interrupts should now arrive.");
@@ -129,6 +139,7 @@ fn kernel() {
     fb::present();
     console_print!("> ");
     fb::present();
+
 }
 
 #[panic_handler]

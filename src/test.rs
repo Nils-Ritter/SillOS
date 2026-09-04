@@ -1,6 +1,9 @@
 pub use sillos_test_macro::test;
 
-use crate::{serial_print, serial_println};
+use crate::{
+    serial_print,
+    serial_println,
+};
 
 pub enum TestResult {
     Pass,
@@ -64,18 +67,26 @@ pub fn run() -> ! {
     let mut passed = 0usize;
     let mut failed = 0usize;
 
-    let mut current: *const Test = &raw const __kernel_tests_start;
+    let mut current: *const Test =
+        &raw const __kernel_tests_start;
 
-    let end: *const Test = &raw const __kernel_tests_end;
+    let end: *const Test =
+        &raw const __kernel_tests_end;
 
     while current < end {
-        let test = unsafe { &*current };
+        let test = unsafe {
+            &*current
+        };
 
         total += 1;
 
-        serial_print!("test {} ... ", test.name);
+        serial_print!(
+            "test {} ... ",
+            test.name
+        );
 
-        let result = (test.function)();
+        let result =
+            (test.function)();
 
         match result {
             TestResult::Pass => {
@@ -88,11 +99,16 @@ pub fn run() -> ! {
                 failed += 1;
 
                 serial_println!("FAIL");
-                serial_println!("    {}", reason);
+                serial_println!(
+                    "    {}",
+                    reason
+                );
             }
         }
 
-        current = unsafe { current.add(1) };
+        current = unsafe {
+            current.add(1)
+        };
     }
 
     serial_println!();
@@ -105,13 +121,21 @@ pub fn run() -> ! {
         failed
     );
 
-    serial_println!("========================================");
+    serial_println!(
+        "========================================"
+    );
 
     if failed == 0 {
-        serial_println!("ALL TESTS PASSED");
+        serial_println!(
+            "ALL TESTS PASSED"
+        );
+
         exit_qemu(true);
     } else {
-        serial_println!("TESTS FAILED");
+        serial_println!(
+            "TESTS FAILED"
+        );
+
         exit_qemu(false);
     }
 
@@ -124,18 +148,31 @@ pub fn run() -> ! {
 // QEMU exit
 // ============================================================
 
-pub fn exit_qemu(success: bool) -> ! {
+pub fn exit_qemu(
+    success: bool,
+) -> ! {
     //
-    // QEMU's isa-debug-exit device listens on port 0xf4.
+    // QEMU's isa-debug-exit device listens on
+    // port 0xf4.
     //
-    let code: u32 = if success { 0x10 } else { 0x11 };
+
+    let code: u32 =
+        if success {
+            0x10
+        } else {
+            0x11
+        };
 
     unsafe {
         core::arch::asm!(
             "out dx, eax",
             in("dx") 0xf4u16,
             in("eax") code,
-            options(nomem, nostack, preserves_flags),
+            options(
+                nomem,
+                nostack,
+                preserves_flags
+            ),
         );
     }
 

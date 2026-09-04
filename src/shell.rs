@@ -1,5 +1,8 @@
-use crate::{acpi, console::{self, Console, clear, with_console}, console_print, console_println, fb::{self, Color}, test::exit_qemu};
-use crate::test::{test, TestResult};
+use x86_64::{VirtAddr, structures::paging::{PageTable, Translate}};
+
+use crate::{acpi, console::{self, Console, clear, with_console}, console_print, console_println, console_println_color, fb::{self, Color}, kmem, test::exit_qemu};
+use crate::test::TestResult;
+use crate::kmem::mem_analyze;
 
 pub fn execute(line: &str) {
     let mut parts = line.split_whitespace();
@@ -19,8 +22,11 @@ pub fn execute(line: &str) {
         "sven" => sven(), //NOTE: Do not add this to help
         "reboot" => reboot(),
         "shutdown" => shutdown(),
+        "exit" => shutdown(),
         "setbg" => setbg(parts),
         "setfg" => setfg(parts),
+        "mem-analyze" => mem_analyze_cmd(),
+        "tg-serial" => toggle_serial(),
         _ => {
             console_println!("Unknown command: {}", command);
             console_println!("Type 'help' for a list of commands.");
@@ -38,8 +44,10 @@ fn help() {
     console_println!("  bp         - Sets and steps over a breakpoint");
     console_println!("  reboot     - Reboots the machine.");
     console_println!("  shutdown   - Shuts the computer down.");
+    console_println!("  exit       - Shuts the computer down.");
     console_println!("  setbg      - Sets the background color.");
     console_println!("  setfg      - Sets the foreground color.");
+    console_println!("  tg-serial  - Toggles priting kTerm output to serial.");
 }
 
 fn clearterm() {
@@ -59,6 +67,12 @@ fn echo(args: core::str::SplitWhitespace<'_>) {
     }
 
     console_println!();
+}
+
+fn toggle_serial(){
+    let state = console::serial_mirror_enabled();
+    console::set_serial_mirror(!state);
+    console_println_color!(Color::GREEN, "Toggled serial mirroring");
 }
 
 fn info() {
@@ -134,6 +148,12 @@ fn setfg(mut args: core::str::SplitWhitespace<'_>) {
         Console::clear(console);
     });
 }
+
+fn mem_analyze_cmd(){
+    kmem::mem_analyze();
+}
+
+//TESTS
 
 fn test_set_color(
     color_name: &str,
