@@ -1,4 +1,6 @@
-use crate::{acpi, console::{self, Console, clear, with_console}, console_print, console_println, fb::{self, Color}, test::exit_qemu};
+use x86_64::{VirtAddr, structures::paging::{PageTable, Translate}};
+
+use crate::{acpi, console::{self, Console, clear, with_console}, console_print, console_println, console_println_color, fb::{self, Color}, kmem::{self, active_level_4_table, hhdm_offset, translate_addr}, test::exit_qemu};
 use crate::test::{test, TestResult};
 
 pub fn execute(line: &str) {
@@ -19,8 +21,10 @@ pub fn execute(line: &str) {
         "sven" => sven(), //NOTE: Do not add this to help
         "reboot" => reboot(),
         "shutdown" => shutdown(),
+        "exit" => shutdown(),
         "setbg" => setbg(parts),
         "setfg" => setfg(parts),
+        "mem-analyze" => mem_analyze(),
         _ => {
             console_println!("Unknown command: {}", command);
             console_println!("Type 'help' for a list of commands.");
@@ -38,6 +42,7 @@ fn help() {
     console_println!("  bp         - Sets and steps over a breakpoint");
     console_println!("  reboot     - Reboots the machine.");
     console_println!("  shutdown   - Shuts the computer down.");
+    console_println!("  exit       - Shuts the computer down.");
     console_println!("  setbg      - Sets the background color.");
     console_println!("  setfg      - Sets the foreground color.");
 }
@@ -134,6 +139,33 @@ fn setfg(mut args: core::str::SplitWhitespace<'_>) {
         Console::clear(console);
     });
 }
+
+fn mem_analyze(){
+    let phys_mem_offset = VirtAddr::new(hhdm_offset());
+    let l4_table = unsafe { active_level_4_table(phys_mem_offset) };
+
+    for (i, entry) in l4_table.iter().enumerate() {
+        if !entry.is_unused() {
+            console_println_color!(Color::GREEN, "L4 Entry {}: {:?}", i, entry);
+
+            // get the physical address from the entry and convert it
+            let phys = entry.frame().unwrap().start_address();
+            let virt = phys.as_u64() + hhdm_offset();
+            let ptr = VirtAddr::new(virt).as_mut_ptr();
+            let l3_table: &PageTable = unsafe { &*ptr };
+
+            // print non-empty entries of the level 3 table
+            for (i, entry) in l3_table.iter().enumerate() {
+                if !entry.is_unused() {
+                    console_println_color!(Color::GREEN, "  L3 Entry {}: {:?}", i, entry);
+                }
+            }
+        }
+    }
+
+}
+
+//TESTS
 
 fn test_set_color(
     color_name: &str,

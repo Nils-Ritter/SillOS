@@ -1,4 +1,4 @@
-use limine::request::{MemmapRequest, HhdmRequest};
+use limine::request::{HhdmRequest, MemmapRequest, MemmapRespData};
 use x86_64::{PhysAddr, VirtAddr, registers::control::Cr3, structures::paging::{OffsetPageTable, PageTable}};
 
 use crate::{console_println, serial_println};
@@ -34,7 +34,7 @@ pub fn init(physical_mem_offset: VirtAddr) -> OffsetPageTable<'static>{
     }
 }
 
-unsafe fn active_level_4_table(physical_mem_offset: VirtAddr) -> &'static mut PageTable {
+pub unsafe fn active_level_4_table(physical_mem_offset: VirtAddr) -> &'static mut PageTable {
     use x86_64::registers::control::Cr3;
     let (level_4_table_frame, _) = Cr3::read();
     let phys = level_4_table_frame.start_address();
