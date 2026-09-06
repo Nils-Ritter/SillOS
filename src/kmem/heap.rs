@@ -44,6 +44,29 @@ use x86_64::{
     VirtAddr,
 };
 
+use crate::kmem::heap::buddy::BuddyAllocator;
+
+mod buddy;
+
+/// Common interface implemented by kernel heap allocators.
+pub trait MemoryAllocator {
+    /// Allocate memory satisfying `layout`, or return a null pointer on failure.
+    ///
+    /// # Safety
+    ///
+    /// The allocator must have been initialized, and the caller must later
+    /// pass the returned pointer (and the same `layout`) to `dealloc`.
+    unsafe fn alloc(&mut self, layout: Layout) -> *mut u8;
+
+    /// Deallocate a block previously returned by `alloc` with the same `layout`.
+    ///
+    /// # Safety
+    ///
+    /// `ptr` must have been returned by this allocator's `alloc` with the
+    /// same `layout`, and must not be used again after this call.
+    unsafe fn dealloc(&mut self, ptr: *mut u8, layout: Layout);
+}
+
 /// Start address of the kernel heap.
 pub const HEAP_START: usize =
     0x_4444_4444_0000;
@@ -129,7 +152,8 @@ pub unsafe fn init_heap(
 
 /// Thread-safe wrapper around the heap allocator.
 pub struct LockedHeap {
-    inner: Mutex<ListAllocator>,
+    //inner: Mutex<ListAllocator>,
+    inner: Mutex<BuddyAllocator>
 }
 
 impl LockedHeap {
@@ -137,7 +161,8 @@ impl LockedHeap {
     pub const fn new() -> Self {
         Self {
             inner: Mutex::new(
-                ListAllocator::new(),
+                //ListAllocator::new(),
+                BuddyAllocator::new(),
             ),
         }
     }
@@ -295,8 +320,55 @@ impl ListAllocator {
         }
     }
 
+    /// Attempt to allocate a block from a specific free region.
+    fn alloc_from_region(
+        region: &ListNode,
+        layout: Layout,
+    ) -> Result<usize, ()> {
+        let alloc_start =
+            align_up(
+                region.start(),
+                layout.align(),
+            );
+
+        let alloc_end =
+            alloc_start
+                .checked_add(
+                    layout.size(),
+                )
+                .ok_or(())?;
+
+        let region_end =
+            region
+                .start()
+                .checked_add(
+                    region.size,
+                )
+                .ok_or(())?;
+
+        if alloc_end > region_end {
+            return Err(());
+        }
+
+        let excess_size =
+            region_end - alloc_end;
+
+        // If there is remaining space, it must be large enough to hold
+        // another ListNode. Otherwise this allocation would leave an
+        // unusable fragment.
+        if excess_size > 0
+            && excess_size < size_of::<ListNode>()
+        {
+            return Err(());
+        }
+
+        Ok(alloc_start)
+    }
+}
+
+impl MemoryAllocator for ListAllocator{
     /// Allocate a block from the heap.
-    fn alloc(
+    unsafe fn alloc(
         &mut self,
         layout: Layout,
     ) -> *mut u8 {
@@ -391,7 +463,7 @@ impl ListAllocator {
     }
 
     /// Deallocate a previously allocated block.
-    fn dealloc(
+    unsafe fn dealloc(
         &mut self,
         ptr: *mut u8,
         layout: Layout,
@@ -421,50 +493,6 @@ impl ListAllocator {
         // eventually fragment the heap.
     }
 
-    /// Attempt to allocate a block from a specific free region.
-    fn alloc_from_region(
-        region: &ListNode,
-        layout: Layout,
-    ) -> Result<usize, ()> {
-        let alloc_start =
-            align_up(
-                region.start(),
-                layout.align(),
-            );
-
-        let alloc_end =
-            alloc_start
-                .checked_add(
-                    layout.size(),
-                )
-                .ok_or(())?;
-
-        let region_end =
-            region
-                .start()
-                .checked_add(
-                    region.size,
-                )
-                .ok_or(())?;
-
-        if alloc_end > region_end {
-            return Err(());
-        }
-
-        let excess_size =
-            region_end - alloc_end;
-
-        // If there is remaining space, it must be large enough to hold
-        // another ListNode. Otherwise this allocation would leave an
-        // unusable fragment.
-        if excess_size > 0
-            && excess_size < size_of::<ListNode>()
-        {
-            return Err(());
-        }
-
-        Ok(alloc_start)
-    }
 }
 
 /// A node describing a free memory region.

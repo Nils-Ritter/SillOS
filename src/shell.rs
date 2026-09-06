@@ -1,3 +1,6 @@
+extern crate alloc;
+use core::alloc::Layout;
+use alloc::alloc::{alloc, dealloc};
 use x86_64::{VirtAddr, structures::paging::{PageTable, Translate}};
 
 use crate::{acpi, console::{self, Console, clear, with_console}, console_print, console_println, console_println_color, fb::{self, Color}, kmem, test::exit_qemu};
@@ -27,6 +30,8 @@ pub fn execute(line: &str) {
         "setfg" => setfg(parts),
         "mem-analyze" => mem_analyze_cmd(),
         "tg-serial" => toggle_serial(),
+        "alloc!" => alloc_cmd(parts),
+        "dealloc!" => dealloc_cmd(parts),
         _ => {
             console_println!("Unknown command: {}", command);
             console_println!("Type 'help' for a list of commands.");
@@ -48,6 +53,8 @@ fn help() {
     console_println!("  setbg      - Sets the background color.");
     console_println!("  setfg      - Sets the foreground color.");
     console_println!("  tg-serial  - Toggles priting kTerm output to serial.");
+    console_println!("  alloc!     - Allocate N bytes, prints a pointer");
+    console_println!("  dealloc!   - Free a pointer previously returned by alloc");
 }
 
 fn clearterm() {
@@ -151,6 +158,118 @@ fn setfg(mut args: core::str::SplitWhitespace<'_>) {
 
 fn mem_analyze_cmd(){
     kmem::mem_analyze();
+}
+
+fn alloc_cmd(mut args: core::str::SplitWhitespace<'_>) {
+    let Some(size_str) = args.next() else {
+        console_println!("Incorrect usage!");
+        console_println!("Usage: alloc <size> [align]");
+        return;
+    };
+
+    let Ok(size) = size_str.parse::<usize>() else {
+        console_println!("Invalid size: {}", size_str);
+        return;
+    };
+
+    if size == 0 {
+        console_println!("Size must be greater than 0");
+        return;
+    }
+
+    let align = match args.next() {
+        Some(align_str) => match align_str.parse::<usize>() {
+            Ok(align) if align.is_power_of_two() => align,
+            _ => {
+                console_println!("Invalid alignment: {} (must be a power of two)", align_str);
+                return;
+            }
+        },
+        None => core::mem::align_of::<usize>(),
+    };
+
+    let Ok(layout) = Layout::from_size_align(size, align) else {
+        console_println!("Invalid layout: size={} align={}", size, align);
+        return;
+    };
+
+    let ptr = unsafe { alloc(layout) };
+
+    if ptr.is_null() {
+        console_println_color!(Color::RED, "Allocation failed: out of memory");
+        return;
+    }
+
+    console_println_color!(
+        Color::GREEN,
+        "Allocated {} bytes (align {}) at {:#x}",
+        size,
+        align,
+        ptr as usize
+    );
+    console_println!(
+        "To free: dealloc {:#x} {} {}",
+        ptr as usize,
+        size,
+        align
+    );
+}
+
+fn dealloc_cmd(mut args: core::str::SplitWhitespace<'_>) {
+    let Some(ptr_str) = args.next() else {
+        console_println!("Incorrect usage!");
+        console_println!("Usage: dealloc <ptr> <size> [align]");
+        return;
+    };
+
+    let Some(size_str) = args.next() else {
+        console_println!("Incorrect usage!");
+        console_println!("Usage: dealloc <ptr> <size> [align]");
+        return;
+    };
+
+    let trimmed = ptr_str
+        .trim_start_matches("0x")
+        .trim_start_matches("0X");
+
+    let Ok(addr) = usize::from_str_radix(trimmed, 16) else {
+        console_println!("Invalid pointer: {}", ptr_str);
+        return;
+    };
+
+    let Ok(size) = size_str.parse::<usize>() else {
+        console_println!("Invalid size: {}", size_str);
+        return;
+    };
+
+    let align = match args.next() {
+        Some(align_str) => match align_str.parse::<usize>() {
+            Ok(align) if align.is_power_of_two() => align,
+            _ => {
+                console_println!("Invalid alignment: {} (must be a power of two)", align_str);
+                return;
+            }
+        },
+        None => core::mem::align_of::<usize>(),
+    };
+
+    let Ok(layout) = Layout::from_size_align(size, align) else {
+        console_println!("Invalid layout: size={} align={}", size, align);
+        return;
+    };
+
+    let ptr = addr as *mut u8;
+
+    if ptr.is_null() {
+        console_println!("Cannot deallocate a null pointer");
+        return;
+    }
+
+    unsafe {
+        dealloc(ptr, layout);
+    }
+
+    console_println_color!(Color::GREEN, "Deallocated {:#x}", addr);
 }
 
 //TESTS
