@@ -3,7 +3,7 @@ use core::alloc::Layout;
 use alloc::alloc::{alloc, dealloc};
 use x86_64::{VirtAddr, structures::paging::{PageTable, Translate}};
 
-use crate::{acpi, console::{self, Console, clear, with_console}, console_print, console_println, console_println_color, fb::{self, Color}, kmem, test::exit_qemu};
+use crate::{acpi, console::{self, Console, clear, with_console}, console_print, console_println, console_println_color, fb::{self, Color}, fs::{Entry, FS}, kmem, test::exit_qemu};
 use crate::test::TestResult;
 use crate::kmem::mem_analyze;
 
@@ -32,6 +32,9 @@ pub fn execute(line: &str) {
         "tg-serial" => toggle_serial(),
         "alloc!" => alloc_cmd(parts),
         "dealloc!" => dealloc_cmd(parts),
+        "ls" => ls(parts),
+        "mkdir" => mkdir(parts),
+        "touch" => touch(parts),
         _ => {
             console_println!("Unknown command: {}", command);
             console_println!("Type 'help' for a list of commands.");
@@ -55,6 +58,63 @@ fn help() {
     console_println!("  tg-serial  - Toggles priting kTerm output to serial.");
     console_println!("  alloc!     - Allocate N bytes, prints a pointer");
     console_println!("  dealloc!   - Free a pointer previously returned by alloc");
+    console_println!("  ls         - List directory contents");
+    console_println!("  mkdir      - Create a directory");
+    console_println!("  touch      - Create an empty file");
+}
+
+fn ls(mut args: core::str::SplitWhitespace<'_>) {
+    let path = args.next().unwrap_or("/");
+
+    let entries = FS.lock().list_entries(path);
+
+    match entries {
+        Ok(mut entries) => {
+            if entries.is_empty() {
+                return;
+            }
+
+            entries.sort_by(|a, b| name_of(a).cmp(name_of(b)));
+
+            for entry in entries {
+                match entry {
+                    Entry::Dir(name) => console_println_color!(Color::BLUE, "{}/", name),
+                    Entry::File(name) => console_println!("{}", name),
+                }
+            }
+        }
+        Err(_) => console_println!("ls: cannot access '{}': No such directory", path),
+    }
+}
+
+fn name_of(entry: &Entry) -> &str {
+    match entry {
+        Entry::Dir(name) | Entry::File(name) => name,
+    }
+}
+
+fn mkdir(mut args: core::str::SplitWhitespace<'_>) {
+    let Some(path) = args.next() else {
+        console_println!("Usage: mkdir <path>");
+        return;
+    };
+
+    match FS.lock().mkdir(path) {
+        Ok(()) => {}
+        Err(_) => console_println!("mkdir: cannot create directory '{}': already exists or parent missing", path),
+    }
+}
+
+fn touch(mut args: core::str::SplitWhitespace<'_>) {
+    let Some(path) = args.next() else {
+        console_println!("Usage: touch <path>");
+        return;
+    };
+
+    match FS.lock().touch(path) {
+        Ok(()) => {}
+        Err(_) => console_println!("touch: cannot create '{}': is a directory or parent missing", path),
+    }
 }
 
 fn clearterm() {
