@@ -3,6 +3,7 @@
 #![feature(abi_x86_interrupt)]
 
 extern crate alloc;
+use alloc::{boxed::Box, vec::Vec, string::String, collections::BTreeMap};
 
 mod fb;
 mod fs;
